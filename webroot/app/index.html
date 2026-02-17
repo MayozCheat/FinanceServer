@@ -2,82 +2,326 @@
 <html lang="zh">
 <head>
   <meta charset="utf-8"/>
-  <title>财务系统测试页</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>财务系统管理台</title>
   <style>
-    body { font-family: "Microsoft YaHei", Arial; padding: 16px; background: #f5f6f8; }
-    input { padding: 6px; margin-right: 10px; margin-bottom: 8px; }
-    button { padding: 6px 12px; margin-right: 8px; margin-bottom: 8px; cursor: pointer; }
-    pre { background:#f6f6f6; padding:12px; border-radius:8px; overflow:auto; }
-    .box { border: 1px solid #ddd; border-radius: 8px; padding: 12px; margin-bottom: 12px; background:#fff; }
-    .user-card { border:1px solid #d9d9d9; border-radius:10px; margin-bottom:12px; background:#fff; }
-    .user-head { padding:10px 12px; display:flex; justify-content:space-between; align-items:center; }
-    .user-table { width:100%; border-collapse:collapse; }
-    .user-table th,.user-table td { border:1px solid #ececec; padding:8px; text-align:left; }
-    .hidden { display:none; }
-    .tip { color:#666; margin-top:6px; }
+    :root {
+      --bg: #f3f5f9;
+      --card: #ffffff;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --line: #e5e7eb;
+      --primary: #2563eb;
+      --primary-soft: #eff6ff;
+      --danger: #dc2626;
+      --success: #16a34a;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Microsoft YaHei", Arial, sans-serif;
+      color: var(--text);
+      background: var(--bg);
+    }
+
+    .page {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .login-card {
+      width: 100%;
+      max-width: 400px;
+      background: var(--card);
+      border-radius: 14px;
+      padding: 24px;
+      box-shadow: 0 10px 30px rgba(17, 24, 39, 0.08);
+    }
+
+    .login-card h1 { margin: 0 0 8px; font-size: 24px; }
+    .muted { color: var(--muted); margin: 0 0 20px; font-size: 14px; }
+
+    .form-item { margin-bottom: 14px; }
+    .form-item label {
+      display: block;
+      margin-bottom: 6px;
+      color: #374151;
+      font-size: 14px;
+    }
+
+    input, select {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      font-size: 14px;
+      background: #fff;
+    }
+
+    .btn {
+      border: none;
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-secondary { background: #111827; color: #fff; }
+    .btn-danger { background: var(--danger); color: #fff; }
+    .btn-ghost { background: #f3f4f6; color: #111827; }
+
+    .error-text { color: var(--danger); font-size: 13px; min-height: 18px; margin: 8px 0 0; }
+    .ok-text { color: var(--success); font-size: 13px; min-height: 18px; margin: 8px 0 0; }
+
+    .app {
+      display: none;
+      min-height: 100vh;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 230px 1fr;
+      min-height: 100vh;
+    }
+
+    .sidebar {
+      background: #111827;
+      color: #e5e7eb;
+      padding: 22px 16px;
+    }
+
+    .brand { font-size: 18px; font-weight: 700; margin-bottom: 8px; }
+    .profile { color: #9ca3af; font-size: 13px; margin-bottom: 18px; }
+
+    .menu {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .menu button {
+      width: 100%;
+      text-align: left;
+      border: none;
+      border-radius: 8px;
+      padding: 10px 12px;
+      color: #e5e7eb;
+      background: transparent;
+      cursor: pointer;
+      font-size: 14px;
+    }
+
+    .menu button.active,
+    .menu button:hover {
+      background: #1f2937;
+      color: #fff;
+    }
+
+    .logout-btn {
+      width: 100%;
+      margin-top: 18px;
+      background: #7f1d1d;
+      color: #fff;
+    }
+
+    .content {
+      padding: 24px;
+    }
+
+    .panel {
+      display: none;
+      background: var(--card);
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 8px 24px rgba(17, 24, 39, 0.06);
+    }
+    .panel.active { display: block; }
+    .panel h2 { margin: 0 0 16px; font-size: 20px; }
+
+    .toolbar { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: #fff;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    th, td {
+      border-bottom: 1px solid var(--line);
+      padding: 10px;
+      font-size: 14px;
+      text-align: left;
+      vertical-align: middle;
+    }
+    th { background: #f9fafb; color: #374151; }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .status-line { margin-top: 10px; font-size: 13px; min-height: 18px; }
+
+    @media (max-width: 900px) {
+      .layout { grid-template-columns: 1fr; }
+      .sidebar { position: sticky; top: 0; z-index: 10; }
+      .grid-2 { grid-template-columns: 1fr; }
+    }
   </style>
 </head>
 <body>
-  <h2>财务系统（登录 + 权限 + 财务录入）</h2>
-
-  <div class="box">
-    <h3>1) 登录 / 当前用户</h3>
-    用户名：<input id="username" value="admin">
-    密码：<input id="password" value="admin123" type="password">
-    <button onclick="fillAdminAndLogin()">一键管理员登录</button>
-    <button onclick="fillFinanceAndLogin()">一键财务登录</button>
-    <button onclick="login()">登录</button>
-    <button onclick="loadMe()">读取当前用户</button>
-    <div>Token: <code id="tokenText">(未登录)</code></div>
-    <div id="roleText" class="tip">当前角色：未知。管理员接口需 admin 账号。</div>
-  </div>
-
-  <div class="box">
-    <h3>2) 报表与台账</h3>
-    公司ID：<input id="companyId" value="1">
-    起始日期：<input id="dateFrom" value="2026-01-01">
-    结束日期：<input id="dateTo" value="2026-01-31">
-    <div>
-      <button onclick="loadCostBenefit()">图1：成本效益分析</button>
-      <button onclick="loadCostBenefitLedger()">台账：成本效益明细</button>
-      <button onclick="loadApSummary()">图2：应付汇总</button>
-      <button onclick="loadApAccrual()">应付计提明细</button>
-      <button onclick="loadApPayment()">应付付款明细</button>
+  <section id="loginPage" class="page">
+    <div class="login-card">
+      <h1>财务系统登录</h1>
+      <p class="muted">请先输入正确的账号和密码，验证成功后进入功能界面。</p>
+      <div class="form-item">
+        <label for="username">账号</label>
+        <input id="username" type="text" placeholder="请输入账号" value="admin"/>
+      </div>
+      <div class="form-item">
+        <label for="password">密码</label>
+        <input id="password" type="password" placeholder="请输入密码" value="admin123"/>
+      </div>
+      <button class="btn btn-primary" style="width:100%" onclick="login()">登录系统</button>
+      <div id="loginError" class="error-text"></div>
     </div>
-  </div>
+  </section>
 
-  <div class="box">
-    <h3>3) 管理员接口</h3>
-    <div class="tip">提示：请先使用管理员账号登录，否则会返回 forbidden。</div>
-    新用户ID：<input id="newUserId" value="10">
-    新用户名：<input id="newUsername" value="finance_new">
-    新密码：<input id="newPassword" value="finance123">
-    <div>
-      <button onclick="loadUsers()">读取用户清单（管理员）</button>
-      <button onclick="createUser()">创建财务用户（管理员）</button>
-      <button onclick="deleteUser()">删除用户（管理员）</button>
+  <section id="appPage" class="app">
+    <div class="layout">
+      <aside class="sidebar">
+        <div class="brand">财务系统</div>
+        <div id="profileText" class="profile">未登录</div>
+        <ul class="menu">
+          <li><button id="menuUsers" class="active" onclick="switchPanel('users')">用户管理</button></li>
+          <li><button id="menuPerms" onclick="switchPanel('permissions')">权限管理</button></li>
+          <li><button id="menuReports" onclick="switchPanel('reports')">报表查询</button></li>
+        </ul>
+        <button class="btn logout-btn" onclick="logout()">退出登录</button>
+      </aside>
+
+      <main class="content">
+        <section id="panel-users" class="panel active">
+          <h2>用户管理</h2>
+          <div class="toolbar">
+            <button class="btn btn-secondary" onclick="loadUsers()">刷新用户列表</button>
+          </div>
+
+          <div class="grid-2">
+            <div>
+              <label>用户ID</label>
+              <input id="newUserId" type="number" value="10"/>
+            </div>
+            <div>
+              <label>用户名</label>
+              <input id="newUsername" type="text" value="finance_new"/>
+            </div>
+            <div>
+              <label>密码</label>
+              <input id="newPassword" type="text" value="finance123"/>
+            </div>
+          </div>
+          <div class="toolbar">
+            <button class="btn btn-primary" onclick="createUser()">新增用户</button>
+            <input id="deleteUserId" type="number" value="10" style="max-width:180px"/>
+            <button class="btn btn-danger" onclick="deleteUser()">删除指定用户</button>
+          </div>
+
+          <table>
+            <thead>
+              <tr><th>ID</th><th>用户名</th><th>角色</th><th>已授权公司数</th></tr>
+            </thead>
+            <tbody id="usersTableBody">
+              <tr><td colspan="4" class="muted">暂无数据</td></tr>
+            </tbody>
+          </table>
+          <div id="userStatus" class="status-line"></div>
+        </section>
+
+        <section id="panel-permissions" class="panel">
+          <h2>权限管理</h2>
+          <div class="grid-2">
+            <div>
+              <label>目标用户ID</label>
+              <input id="permUserId" type="number" value="2"/>
+            </div>
+            <div>
+              <label>公司ID</label>
+              <input id="permCompanyId" type="number" value="1"/>
+            </div>
+          </div>
+
+          <div class="toolbar">
+            <label><input id="grantRead" type="checkbox" checked style="width:auto; margin-right:6px;">读取权限</label>
+            <label><input id="grantWrite" type="checkbox" style="width:auto; margin-right:6px;">修改权限</label>
+            <button class="btn btn-primary" onclick="addPermission()">添加权限</button>
+          </div>
+          <div class="toolbar">
+            <label><input id="removeRead" type="checkbox" style="width:auto; margin-right:6px;">移除读取</label>
+            <label><input id="removeWrite" type="checkbox" checked style="width:auto; margin-right:6px;">移除修改</label>
+            <button class="btn btn-danger" onclick="removePermission()">删除权限</button>
+            <button class="btn btn-secondary" onclick="loadPermissions()">刷新权限列表</button>
+          </div>
+
+          <table>
+            <thead>
+              <tr><th>用户ID</th><th>用户名</th><th>公司ID</th><th>读取</th><th>修改</th></tr>
+            </thead>
+            <tbody id="permissionTableBody">
+              <tr><td colspan="5" class="muted">暂无数据</td></tr>
+            </tbody>
+          </table>
+          <div id="permStatus" class="status-line"></div>
+        </section>
+
+        <section id="panel-reports" class="panel">
+          <h2>报表查询</h2>
+          <div class="grid-2">
+            <div>
+              <label>公司ID</label>
+              <input id="companyId" value="1"/>
+            </div>
+            <div>
+              <label>开始日期</label>
+              <input id="dateFrom" value="2026-01-01"/>
+            </div>
+            <div>
+              <label>结束日期</label>
+              <input id="dateTo" value="2026-01-31"/>
+            </div>
+            <div>
+              <label>报表类型</label>
+              <select id="reportType">
+                <option value="cost_benefit">成本效益分析</option>
+                <option value="cost_benefit_ledger">成本效益台账</option>
+                <option value="ap_summary">应付汇总</option>
+                <option value="ap_accrual">应付计提明细</option>
+                <option value="ap_payment">应付付款明细</option>
+              </select>
+            </div>
+          </div>
+          <div class="toolbar">
+            <button class="btn btn-primary" onclick="loadSelectedReport()">查询</button>
+          </div>
+          <table>
+            <thead><tr><th>返回结果</th></tr></thead>
+            <tbody id="reportTableBody"><tr><td class="muted">请选择报表并点击查询</td></tr></tbody>
+          </table>
+          <div id="reportStatus" class="status-line"></div>
+        </section>
+      </main>
     </div>
-    删除用户ID：<input id="deleteUserId" value="10">
-    <hr>
-    用户ID：<input id="permUserId" value="2">
-    公司ID：<input id="permCompanyId" value="1">
-    <label><input id="grantRead" type="checkbox" checked>添加读取权限</label>
-    <label><input id="grantWrite" type="checkbox">添加修改权限</label>
-    <button onclick="addPermission()">添加公司权限</button>
-    <br>
-    <label><input id="removeRead" type="checkbox">删除读取权限</label>
-    <label><input id="removeWrite" type="checkbox" checked>删除修改权限</label>
-    <button onclick="removePermission()">删除公司权限</button>
-    <button onclick="loadPermissions()">读取权限清单（管理员）</button>
-  </div>
-
-  <div class="box">
-    <h3>4) 用户卡片视图</h3>
-    <div id="userCards"></div>
-  </div>
-
-  <h3>接口返回（JSON）</h3>
-  <pre id="out">点击按钮开始测试</pre>
+  </section>
 
 <script>
 let token = "";
@@ -86,155 +330,213 @@ function el(id) { return document.getElementById(id); }
 
 async function fetchJson(url, options = {}) {
   const headers = Object.assign({}, options.headers || {});
-  if (token) headers["Authorization"] = `Bearer ${token}`;
-  const r = await fetch(url, Object.assign({}, options, { headers }));
-  return await r.json();
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  const response = await fetch(url, Object.assign({}, options, { headers }));
+  return await response.json();
+}
+
+function setStatus(targetId, text, ok = true) {
+  const node = el(targetId);
+  node.textContent = text;
+  node.className = `status-line ${ok ? 'ok-text' : 'error-text'}`;
+}
+
+function switchPanel(name) {
+  ['users', 'permissions', 'reports'].forEach(panel => {
+    el(`panel-${panel}`).classList.toggle('active', panel === name);
+  });
+  el('menuUsers').classList.toggle('active', name === 'users');
+  el('menuPerms').classList.toggle('active', name === 'permissions');
+  el('menuReports').classList.toggle('active', name === 'reports');
+}
+
+async function login() {
+  el('loginError').textContent = '';
+  const username = el('username').value.trim();
+  const password = el('password').value.trim();
+  const data = await fetchJson('/api/auth/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, password })
+  });
+
+  if (!(data.ok && data.data && data.data.token)) {
+    token = '';
+    el('loginError').textContent = data.message || '账号或密码错误，请重试。';
+    return;
+  }
+
+  token = data.data.token;
+  const me = await fetchJson('/api/me');
+  if (!me.ok || !me.data) {
+    token = '';
+    el('loginError').textContent = '登录后读取用户信息失败。';
+    return;
+  }
+
+  el('profileText').textContent = `${me.data.username} · ${me.data.isAdmin ? '管理员' : '普通用户'}`;
+  el('loginPage').style.display = 'none';
+  el('appPage').style.display = 'block';
+
+  await loadUsers();
+  await loadPermissions();
+}
+
+function logout() {
+  token = '';
+  el('appPage').style.display = 'none';
+  el('loginPage').style.display = 'flex';
+  el('loginError').textContent = '';
+}
+
+function renderUsers(users) {
+  const body = el('usersTableBody');
+  if (!users.length) {
+    body.innerHTML = '<tr><td colspan="4" class="muted">暂无用户数据</td></tr>';
+    return;
+  }
+  body.innerHTML = users.map(u => {
+    const count = (u.companies || []).filter(c => c.canRead || c.canWrite).length;
+    return `<tr><td>${u.userId}</td><td>${u.username}</td><td>${u.isAdmin ? '管理员' : '普通用户'}</td><td>${count}</td></tr>`;
+  }).join('');
+}
+
+function renderPermissions(users) {
+  const body = el('permissionTableBody');
+  const rows = [];
+  users.forEach(u => {
+    (u.companies || []).filter(c => c.canRead || c.canWrite).forEach(c => {
+      rows.push(`<tr><td>${u.userId}</td><td>${u.username}</td><td>${c.companyId}</td><td>${c.canRead ? '是' : '否'}</td><td>${c.canWrite ? '是' : '否'}</td></tr>`);
+    });
+  });
+
+  body.innerHTML = rows.length ? rows.join('') : '<tr><td colspan="5" class="muted">暂无权限数据</td></tr>';
+}
+
+async function loadUsers() {
+  const data = await fetchJson('/api/admin/users');
+  if (!data.ok) {
+    setStatus('userStatus', data.message || '读取用户失败', false);
+    return;
+  }
+  renderUsers(data.data.users || []);
+  setStatus('userStatus', '用户列表已更新');
+}
+
+async function createUser() {
+  const data = await fetchJson('/api/admin/users', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      userId: Number(el('newUserId').value.trim()),
+      username: el('newUsername').value.trim(),
+      password: el('newPassword').value.trim(),
+      isAdmin: false
+    })
+  });
+
+  if (!data.ok) {
+    setStatus('userStatus', data.message || '新增用户失败', false);
+    return;
+  }
+  setStatus('userStatus', '新增用户成功');
+  await loadUsers();
+}
+
+async function deleteUser() {
+  const data = await fetchJson('/api/admin/users/delete', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ targetUserId: Number(el('deleteUserId').value.trim()) })
+  });
+
+  if (!data.ok) {
+    setStatus('userStatus', data.message || '删除用户失败', false);
+    return;
+  }
+  setStatus('userStatus', '删除用户成功');
+  await loadUsers();
+}
+
+async function loadPermissions() {
+  const data = await fetchJson('/api/admin/permissions');
+  if (!data.ok) {
+    setStatus('permStatus', data.message || '读取权限失败', false);
+    return;
+  }
+  renderPermissions(data.data.users || []);
+  setStatus('permStatus', '权限列表已更新');
+}
+
+async function addPermission() {
+  const data = await fetchJson('/api/admin/permissions/company/add', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      targetUserId: Number(el('permUserId').value.trim()),
+      companyId: Number(el('permCompanyId').value.trim()),
+      grantRead: el('grantRead').checked,
+      grantWrite: el('grantWrite').checked
+    })
+  });
+
+  if (!data.ok) {
+    setStatus('permStatus', data.message || '添加权限失败', false);
+    return;
+  }
+  setStatus('permStatus', '添加权限成功');
+  await loadPermissions();
+}
+
+async function removePermission() {
+  const data = await fetchJson('/api/admin/permissions/company/remove', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      targetUserId: Number(el('permUserId').value.trim()),
+      companyId: Number(el('permCompanyId').value.trim()),
+      removeRead: el('removeRead').checked,
+      removeWrite: el('removeWrite').checked
+    })
+  });
+
+  if (!data.ok) {
+    setStatus('permStatus', data.message || '删除权限失败', false);
+    return;
+  }
+  setStatus('permStatus', '删除权限成功');
+  await loadPermissions();
 }
 
 function getParams() {
   return {
     companyId: el('companyId').value.trim(),
     dateFrom: el('dateFrom').value.trim(),
-    dateTo: el('dateTo').value.trim()
+    dateTo: el('dateTo').value.trim(),
+    reportType: el('reportType').value
   };
 }
 
-function show(data) { el('out').textContent = JSON.stringify(data, null, 2); }
+async function loadSelectedReport() {
+  const p = getParams();
+  let url = '';
+  if (p.reportType === 'cost_benefit') url = '/api/reports/cost_benefit';
+  if (p.reportType === 'cost_benefit_ledger') url = '/api/finance/cost_benefit';
+  if (p.reportType === 'ap_summary') url = '/api/reports/ap_summary';
+  if (p.reportType === 'ap_accrual') url = '/api/finance/ap_accrual';
+  if (p.reportType === 'ap_payment') url = '/api/finance/ap_payment';
 
-async function refreshRole() {
-  if (!token) {
-    el('roleText').textContent = '当前角色：未登录。管理员接口需 admin 账号。';
+  const query = `company_id=${encodeURIComponent(p.companyId)}&date_from=${encodeURIComponent(p.dateFrom)}&date_to=${encodeURIComponent(p.dateTo)}`;
+  const data = await fetchJson(`${url}?${query}`);
+
+  if (!data.ok) {
+    setStatus('reportStatus', data.message || '查询失败', false);
+    el('reportTableBody').innerHTML = '<tr><td class="muted">查询失败，请检查参数</td></tr>';
     return;
   }
-  const me = await fetchJson('/api/me');
-  if (me.ok && me.data) {
-    el('roleText').textContent = `当前角色：${me.data.username} (${me.data.isAdmin ? '管理员' : '普通用户'})`;
-  }
-}
 
-async function login() {
-  const data = await fetchJson('/api/auth/login', {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ username: el('username').value.trim(), password: el('password').value.trim() })
-  });
-  if (data.ok && data.data && data.data.token) {
-    token = data.data.token;
-    el('tokenText').textContent = token;
-    await refreshRole();
-  }
-  show(data);
-}
-
-async function fillAdminAndLogin() {
-  el('username').value = 'admin';
-  el('password').value = 'admin123';
-  await login();
-}
-
-async function fillFinanceAndLogin() {
-  el('username').value = 'finance_a';
-  el('password').value = 'finance123';
-  await login();
-}
-
-async function loadMe() { const data = await fetchJson('/api/me'); show(data); }
-async function loadCostBenefit() { const p = getParams(); show(await fetchJson(`/api/reports/cost_benefit?company_id=${encodeURIComponent(p.companyId)}&date_from=${encodeURIComponent(p.dateFrom)}&date_to=${encodeURIComponent(p.dateTo)}`)); }
-async function loadCostBenefitLedger() { const p = getParams(); show(await fetchJson(`/api/finance/cost_benefit?company_id=${encodeURIComponent(p.companyId)}&date_from=${encodeURIComponent(p.dateFrom)}&date_to=${encodeURIComponent(p.dateTo)}`)); }
-async function loadApSummary() { const p = getParams(); show(await fetchJson(`/api/reports/ap_summary?company_id=${encodeURIComponent(p.companyId)}&date_from=${encodeURIComponent(p.dateFrom)}&date_to=${encodeURIComponent(p.dateTo)}`)); }
-async function loadApAccrual() { const p = getParams(); show(await fetchJson(`/api/finance/ap_accrual?company_id=${encodeURIComponent(p.companyId)}&date_from=${encodeURIComponent(p.dateFrom)}&date_to=${encodeURIComponent(p.dateTo)}`)); }
-async function loadApPayment() { const p = getParams(); show(await fetchJson(`/api/finance/ap_payment?company_id=${encodeURIComponent(p.companyId)}&date_from=${encodeURIComponent(p.dateFrom)}&date_to=${encodeURIComponent(p.dateTo)}`)); }
-async function loadPermissions() { const data = await fetchJson('/api/admin/permissions'); show(data); if (data.ok) renderUsers(data.data.users || []); }
-
-async function loadUsers() {
-  const data = await fetchJson('/api/admin/users');
-  show(data);
-  if (data.ok) renderUsers(data.data.users || []);
-}
-
-async function createUser() {
-  show(await fetchJson('/api/admin/users', {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ userId: Number(el('newUserId').value.trim()), username: el('newUsername').value.trim(), password: el('newPassword').value.trim(), isAdmin: false })
-  }));
-}
-
-async function deleteUser() {
-  const data = await fetchJson('/api/admin/users/delete', {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ targetUserId: Number(el('deleteUserId').value.trim()) })
-  });
-  show(data);
-  if (data.ok) await loadUsers();
-}
-
-async function addPermission() {
-  const data = await fetchJson('/api/admin/permissions/company/add', {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      targetUserId: Number(el('permUserId').value.trim()), companyId: Number(el('permCompanyId').value.trim()),
-      grantRead: el('grantRead').checked, grantWrite: el('grantWrite').checked
-    })
-  });
-  show(data);
-  if (data.ok) await loadUsers();
-}
-
-async function removePermission() {
-  const data = await fetchJson('/api/admin/permissions/company/remove', {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      targetUserId: Number(el('permUserId').value.trim()), companyId: Number(el('permCompanyId').value.trim()),
-      removeRead: el('removeRead').checked, removeWrite: el('removeWrite').checked
-    })
-  });
-  show(data);
-  if (data.ok) await loadUsers();
-}
-
-async function onPermissionToggle(userId, companyId, type, checked) {
-  const endpoint = checked ? '/api/admin/permissions/company/add' : '/api/admin/permissions/company/remove';
-  const body = { targetUserId: userId, companyId: companyId, grantRead: false, grantWrite: false, removeRead: false, removeWrite: false };
-  if (type === 'read') {
-    body.grantRead = checked;
-    body.removeRead = !checked;
-  } else {
-    body.grantWrite = checked;
-    body.removeWrite = !checked;
-  }
-  const data = await fetchJson(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-  show(data);
-  if (data.ok) await loadUsers();
-}
-
-function renderUsers(users) {
-  const root = el('userCards');
-  root.innerHTML = '';
-  users.forEach((u, idx) => {
-    const card = document.createElement('div');
-    card.className = 'user-card';
-    const detailId = `detail_${idx}_${u.userId}`;
-    const companies = (u.companies || []).filter(c => c.canRead || c.canWrite);
-    card.innerHTML = `
-      <div class="user-head">
-        <div><b>${u.username}</b> (ID: ${u.userId}) ${u.isAdmin ? '[管理员]' : ''}</div>
-        <button onclick="document.getElementById('${detailId}').classList.toggle('hidden')">展开/收起</button>
-      </div>
-      <div id="${detailId}" class="hidden" style="padding: 0 12px 12px 12px;">
-        ${companies.length === 0 ? '<div>无公司权限</div>' : `
-          <table class="user-table">
-            <thead><tr><th>公司ID</th><th>读取权限</th><th>修改权限</th></tr></thead>
-            <tbody>
-              ${companies.map(c => `
-                <tr>
-                  <td>${c.companyId}</td>
-                  <td><input type="checkbox" ${c.canRead ? 'checked' : ''} onchange="onPermissionToggle(${u.userId}, ${c.companyId}, 'read', this.checked)"></td>
-                  <td><input type="checkbox" ${c.canWrite ? 'checked' : ''} onchange="onPermissionToggle(${u.userId}, ${c.companyId}, 'write', this.checked)"></td>
-                </tr>`).join('')}
-            </tbody>
-          </table>`}
-      </div>`;
-    root.appendChild(card);
-  });
+  el('reportTableBody').innerHTML = `<tr><td><pre style="margin:0; white-space:pre-wrap">${JSON.stringify(data.data, null, 2)}</pre></td></tr>`;
+  setStatus('reportStatus', '查询成功');
 }
 </script>
 </body>
