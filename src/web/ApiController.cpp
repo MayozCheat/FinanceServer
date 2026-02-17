@@ -30,13 +30,13 @@ void ApiController::Register(HttpServer& http) {
         }
 
         return true;
-    };
+        };
 
     s.Get("/health", [](const httplib::Request&, httplib::Response& res) {
         res.set_content("ok", "text/plain; charset=utf-8");
-    });
+        });
 
-    s.Get("/api/companies", [this, &requireLogin](const httplib::Request& req, httplib::Response& res) {
+    s.Get("/api/companies", [this, requireLogin](const httplib::Request& req, httplib::Response& res) {
         long long userId = 0;
         bool isAdmin = false;
         if (!requireLogin(req, userId, isAdmin, res)) return;
@@ -44,9 +44,9 @@ void ApiController::Register(HttpServer& http) {
         (void)isAdmin;
 
         ReplyJson(res, financeService_.ListCompanies());
-    });
+        });
 
-    s.Get("/api/projects", [this, &requireLogin](const httplib::Request& req, httplib::Response& res) {
+    s.Get("/api/projects", [this, requireLogin](const httplib::Request& req, httplib::Response& res) {
         long long userId = 0;
         bool isAdmin = false;
         if (!requireLogin(req, userId, isAdmin, res)) return;
@@ -55,7 +55,8 @@ void ApiController::Register(HttpServer& http) {
         if (req.has_param("company_id")) {
             try {
                 companyId = std::stoll(req.get_param_value("company_id"));
-            } catch (...) {
+            }
+            catch (...) {
                 ReplyJson(res, ApiResult::Fail(10001, "invalid_company_id"));
                 return;
             }
@@ -67,9 +68,9 @@ void ApiController::Register(HttpServer& http) {
         }
 
         ReplyJson(res, financeService_.ListProjects(companyId));
-    });
+        });
 
-    s.Post("/api/admin/companies", httplib::Server::Handler([this, &requireLogin](const httplib::Request& req, httplib::Response& res) {
+    s.Post("/api/admin/companies", httplib::Server::Handler([this, requireLogin](const httplib::Request& req, httplib::Response& res) {
         long long userId = 0;
         bool isAdmin = false;
         if (!requireLogin(req, userId, isAdmin, res)) return;
@@ -81,15 +82,16 @@ void ApiController::Register(HttpServer& http) {
         Json body;
         try {
             body = Json::parse(req.body);
-        } catch (...) {
+        }
+        catch (...) {
             ReplyJson(res, ApiResult::Fail(30000, "invalid_json"));
             return;
         }
 
         ReplyJson(res, financeService_.CreateCompany(body.value("id", 0LL), body.value("name", "")));
-    }));
+        }));
 
-    s.Post("/api/admin/projects", httplib::Server::Handler([this, &requireLogin](const httplib::Request& req, httplib::Response& res) {
+    s.Post("/api/admin/projects", httplib::Server::Handler([this, requireLogin](const httplib::Request& req, httplib::Response& res) {
         long long userId = 0;
         bool isAdmin = false;
         if (!requireLogin(req, userId, isAdmin, res)) return;
@@ -101,15 +103,16 @@ void ApiController::Register(HttpServer& http) {
         Json body;
         try {
             body = Json::parse(req.body);
-        } catch (...) {
+        }
+        catch (...) {
             ReplyJson(res, ApiResult::Fail(30000, "invalid_json"));
             return;
         }
 
         ReplyJson(res, financeService_.CreateProject(body.value("id", 0LL), body.value("companyId", 0LL), body.value("name", "")));
-    }));
+        }));
 
-    s.Get("/api/reports/cost_benefit", [this, &requireLogin](const httplib::Request& req, httplib::Response& res) {
+    s.Get("/api/reports/cost_benefit", [this, requireLogin](const httplib::Request& req, httplib::Response& res) {
         if (!req.has_param("company_id") || !req.has_param("date_from") || !req.has_param("date_to")) {
             ReplyJson(res, ApiResult::Fail(10000, "missing_params"));
             return;
@@ -122,7 +125,8 @@ void ApiController::Register(HttpServer& http) {
         long long companyId = 0;
         try {
             companyId = std::stoll(req.get_param_value("company_id"));
-        } catch (...) {
+        }
+        catch (...) {
             ReplyJson(res, ApiResult::Fail(10001, "invalid_company_id"));
             return;
         }
@@ -135,9 +139,9 @@ void ApiController::Register(HttpServer& http) {
         std::string dateFrom = req.get_param_value("date_from");
         std::string dateTo = req.get_param_value("date_to");
         ReplyJson(res, reportService_.CostBenefit(companyId, dateFrom, dateTo));
-    });
+        });
 
-    s.Get("/api/reports/ap_summary", [this, &requireLogin](const httplib::Request& req, httplib::Response& res) {
+    s.Get("/api/reports/ap_summary", [this, requireLogin](const httplib::Request& req, httplib::Response& res) {
         if (!req.has_param("company_id") || !req.has_param("date_from") || !req.has_param("date_to")) {
             ReplyJson(res, ApiResult::Fail(10000, "missing_params"));
             return;
@@ -150,7 +154,8 @@ void ApiController::Register(HttpServer& http) {
         long long companyId = 0;
         try {
             companyId = std::stoll(req.get_param_value("company_id"));
-        } catch (...) {
+        }
+        catch (...) {
             ReplyJson(res, ApiResult::Fail(10001, "invalid_company_id"));
             return;
         }
@@ -163,9 +168,9 @@ void ApiController::Register(HttpServer& http) {
         std::string dateFrom = req.get_param_value("date_from");
         std::string dateTo = req.get_param_value("date_to");
         ReplyJson(res, reportService_.ApSummary(companyId, dateFrom, dateTo));
-    });
+        });
 
-    s.Post("/api/finance/cost_benefit", httplib::Server::Handler([this, &requireLogin](const httplib::Request& req, httplib::Response& res) {
+    s.Post("/api/finance/cost_benefit", httplib::Server::Handler([this, requireLogin](const httplib::Request& req, httplib::Response& res) {
         long long userId = 0;
         bool isAdmin = false;
         if (!requireLogin(req, userId, isAdmin, res)) return;
@@ -173,7 +178,8 @@ void ApiController::Register(HttpServer& http) {
         Json body;
         try {
             body = Json::parse(req.body);
-        } catch (...) {
+        }
+        catch (...) {
             ReplyJson(res, ApiResult::Fail(30000, "invalid_json"));
             return;
         }
@@ -203,9 +209,9 @@ void ApiController::Register(HttpServer& http) {
             body.value("assessProfit", 0.0),
             body.value("remark", "")
         ));
-    }));
+        }));
 
-    s.Post("/api/finance/ap_accrual", httplib::Server::Handler([this, &requireLogin](const httplib::Request& req, httplib::Response& res) {
+    s.Post("/api/finance/ap_accrual", httplib::Server::Handler([this, requireLogin](const httplib::Request& req, httplib::Response& res) {
         long long userId = 0;
         bool isAdmin = false;
         if (!requireLogin(req, userId, isAdmin, res)) return;
@@ -213,7 +219,8 @@ void ApiController::Register(HttpServer& http) {
         Json body;
         try {
             body = Json::parse(req.body);
-        } catch (...) {
+        }
+        catch (...) {
             ReplyJson(res, ApiResult::Fail(30000, "invalid_json"));
             return;
         }
@@ -232,9 +239,9 @@ void ApiController::Register(HttpServer& http) {
             body.value("amount", 0.0),
             body.value("bizDate", "")
         ));
-    }));
+        }));
 
-    s.Post("/api/finance/ap_payment", httplib::Server::Handler([this, &requireLogin](const httplib::Request& req, httplib::Response& res) {
+    s.Post("/api/finance/ap_payment", httplib::Server::Handler([this, requireLogin](const httplib::Request& req, httplib::Response& res) {
         long long userId = 0;
         bool isAdmin = false;
         if (!requireLogin(req, userId, isAdmin, res)) return;
@@ -242,7 +249,8 @@ void ApiController::Register(HttpServer& http) {
         Json body;
         try {
             body = Json::parse(req.body);
-        } catch (...) {
+        }
+        catch (...) {
             ReplyJson(res, ApiResult::Fail(30000, "invalid_json"));
             return;
         }
@@ -261,9 +269,9 @@ void ApiController::Register(HttpServer& http) {
             body.value("amount", 0.0),
             body.value("payDate", "")
         ));
-    }));
+        }));
 
-    s.Get("/api/finance/ap_accrual", [this, &requireLogin](const httplib::Request& req, httplib::Response& res) {
+    s.Get("/api/finance/ap_accrual", [this, requireLogin](const httplib::Request& req, httplib::Response& res) {
         if (!req.has_param("company_id") || !req.has_param("date_from") || !req.has_param("date_to")) {
             ReplyJson(res, ApiResult::Fail(10000, "missing_params"));
             return;
@@ -276,7 +284,8 @@ void ApiController::Register(HttpServer& http) {
         long long companyId = 0;
         try {
             companyId = std::stoll(req.get_param_value("company_id"));
-        } catch (...) {
+        }
+        catch (...) {
             ReplyJson(res, ApiResult::Fail(10001, "invalid_company_id"));
             return;
         }
@@ -287,9 +296,9 @@ void ApiController::Register(HttpServer& http) {
         }
 
         ReplyJson(res, financeService_.ListApAccrual(companyId, req.get_param_value("date_from"), req.get_param_value("date_to")));
-    });
+        });
 
-    s.Get("/api/finance/ap_payment", [this, &requireLogin](const httplib::Request& req, httplib::Response& res) {
+    s.Get("/api/finance/ap_payment", [this, requireLogin](const httplib::Request& req, httplib::Response& res) {
         if (!req.has_param("company_id") || !req.has_param("date_from") || !req.has_param("date_to")) {
             ReplyJson(res, ApiResult::Fail(10000, "missing_params"));
             return;
@@ -302,7 +311,8 @@ void ApiController::Register(HttpServer& http) {
         long long companyId = 0;
         try {
             companyId = std::stoll(req.get_param_value("company_id"));
-        } catch (...) {
+        }
+        catch (...) {
             ReplyJson(res, ApiResult::Fail(10001, "invalid_company_id"));
             return;
         }
@@ -313,5 +323,5 @@ void ApiController::Register(HttpServer& http) {
         }
 
         ReplyJson(res, financeService_.ListApPayment(companyId, req.get_param_value("date_from"), req.get_param_value("date_to")));
-    });
+        });
 }
