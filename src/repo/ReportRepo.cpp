@@ -2,10 +2,39 @@
 #include "core/Logger.h"
 #include <sstream>
 #include <unordered_map>
+#include <algorithm>
+#include <cctype>
 
 namespace {
 bool IsTableMissingError(const std::string& err) {
     return err.find("doesn't exist") != std::string::npos;
+}
+
+std::string SafeCol(const Db::Row& r, size_t i) {
+    if (i >= r.cols.size()) return "";
+    return r.cols[i];
+}
+
+bool TryParseDouble(const std::string& text, double& out) {
+    if (text.empty()) {
+        out = 0.0;
+        return true;
+    }
+
+    std::string lower = text;
+    std::transform(lower.begin(), lower.end(), lower.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+    if (lower == "null") {
+        out = 0.0;
+        return true;
+    }
+
+    try {
+        out = std::stod(text);
+        return true;
+    } catch (...) {
+        out = 0.0;
+        return false;
+    }
 }
 }
 
@@ -43,7 +72,7 @@ ApiResult ReportRepo::QueryCostBenefit(long long companyId, const std::string& d
     Json arr = Json::array();
     for (const auto& r : rows) {
         Json item;
-        for (size_t i = 0; i < cols.size(); i++) item[cols[i]] = r.cols[i];
+        for (size_t i = 0; i < cols.size(); i++) item[cols[i]] = SafeCol(r, i);
         arr.push_back(item);
     }
     return ApiResult::Ok(Json{{"rows", arr}});
@@ -97,8 +126,12 @@ ApiResult ReportRepo::QueryApSummary(long long companyId, const std::string& dat
     // paidMap：projectId|vendor|bizType -> paidTotal
     std::unordered_map<std::string, double> paidMap;
     for (const auto& r : payRows) {
-        std::string key = r.cols[0] + "|" + r.cols[1] + "|" + r.cols[2];
-        paidMap[key] = std::stod(r.cols[3]);
+        std::string key = SafeCol(r, 0) + "|" + SafeCol(r, 1) + "|" + SafeCol(r, 2);
+        double paid = 0.0;
+        if (!TryParseDouble(SafeCol(r, 3), paid)) {
+            Logger::Instance().Error("【报表】付款金额解析失败，已按0处理。原始值=" + SafeCol(r, 3));
+        }
+        paidMap[key] = paid;
     }
 
     // project 聚合
@@ -107,11 +140,14 @@ ApiResult ReportRepo::QueryApSummary(long long companyId, const std::string& dat
     std::vector<std::string> order;
 
     for (const auto& r : accRows) {
-        std::string projectId = r.cols[0];
-        std::string projectName = r.cols[1];
-        std::string vendor = r.cols[2];
-        std::string bizType = r.cols[3];
-        double accrualTotal = std::stod(r.cols[4]);
+        std::string projectId = SafeCol(r, 0);
+        std::string projectName = SafeCol(r, 1);
+        std::string vendor = SafeCol(r, 2);
+        std::string bizType = SafeCol(r, 3);
+        double accrualTotal = 0.0;
+        if (!TryParseDouble(SafeCol(r, 4), accrualTotal)) {
+            Logger::Instance().Error("【报表】挂账金额解析失败，已按0处理。原始值=" + SafeCol(r, 4));
+        }
 
         std::string key = projectId + "|" + vendor + "|" + bizType;
         double paidTotal = paidMap.count(key) ? paidMap[key] : 0.0;
