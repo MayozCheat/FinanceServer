@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8"/>
+  <title>财务报表测试</title>
+  <style>
+    body { font-family: "Microsoft YaHei", Arial; padding: 16px; }
+    input { padding: 6px; margin-right: 10px; }
+    button { padding: 6px 12px; margin-right: 8px; }
+    pre { background:#f6f6f6; padding:12px; border-radius:8px; overflow:auto; }
+  </style>
+</head>
+<body>
+  <h2>财务报表（测试页）</h2>
+
+  公司ID：<input id="companyId" value="1">
+  起始日期：<input id="dateFrom" value="2026-01-01">
+  结束日期：<input id="dateTo" value="2026-01-31">
+
+  <div style="margin-top:10px;">
+    <button onclick="loadCostBenefit()">图1：成本效益</button>
+    <button onclick="loadApSummary()">图2：应付汇总</button>
+  </div>
+
+  <h3>接口返回（JSON）</h3>
+  <pre id="out">点击按钮开始测试</pre>
+
+<script>
+async function fetchJson(url) {
+  const r = await fetch(url);
+  return await r.json();
+}
+function getParams() {
+  return {
+    companyId: document.getElementById('companyId').value.trim(),
+    dateFrom: document.getElementById('dateFrom').value.trim(),
+    dateTo: document.getElementById('dateTo').value.trim()
+  };
+}
+async function loadCostBenefit() {
+  const p = getParams();
+  const url = `/api/reports/cost_benefit?company_id=${encodeURIComponent(p.companyId)}&date_from=${encodeURIComponent(p.dateFrom)}&date_to=${encodeURIComponent(p.dateTo)}`;
+  document.getElementById('out').textContent = JSON.stringify(await fetchJson(url), null, 2);
+}
+async function loadApSummary() {
+  const p = getParams();
+  const url = `/api/reports/ap_summary?company_id=${encodeURIComponent(p.companyId)}&date_from=${encodeURIComponent(p.dateFrom)}&date_to=${encodeURIComponent(p.dateTo)}`;
+  document.getElementById('out').textContent = JSON.stringify(await fetchJson(url), null, 2);
+}
+</script>
+</body>
+</html>
