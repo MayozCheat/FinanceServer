@@ -195,7 +195,7 @@ void ApiController::Register(HttpServer& http) {
         }
 
         long long companyId = body.value("companyId", 0LL);
-        if (!isAdmin && !authService_.CanAccessCompany(userId, companyId)) {
+        if (!isAdmin && !authService_.CanModifyCompany(userId, companyId)) {
             ReplyJson(res, ApiResult::Fail(30002, "forbidden"));
             return;
         }
@@ -236,7 +236,7 @@ void ApiController::Register(HttpServer& http) {
         }
 
         long long companyId = body.value("companyId", 0LL);
-        if (!isAdmin && !authService_.CanAccessCompany(userId, companyId)) {
+        if (!isAdmin && !authService_.CanModifyCompany(userId, companyId)) {
             ReplyJson(res, ApiResult::Fail(30002, "forbidden"));
             return;
         }
@@ -266,7 +266,7 @@ void ApiController::Register(HttpServer& http) {
         }
 
         long long companyId = body.value("companyId", 0LL);
-        if (!isAdmin && !authService_.CanAccessCompany(userId, companyId)) {
+        if (!isAdmin && !authService_.CanModifyCompany(userId, companyId)) {
             ReplyJson(res, ApiResult::Fail(30002, "forbidden"));
             return;
         }
@@ -417,6 +417,27 @@ void ApiController::Register(HttpServer& http) {
             isAdmin,
             body.value("targetUserId", 0LL),
             body.value("newPassword", "")
+        ));
+    }));
+
+    s.Post("/api/admin/users/delete", httplib::Server::Handler([this, requireLogin](const httplib::Request& req, httplib::Response& res) {
+        long long userId = 0;
+        bool isAdmin = false;
+        if (!requireLogin(req, userId, isAdmin, res)) return;
+
+        Json body;
+        try {
+            body = Json::parse(req.body);
+        }
+        catch (...) {
+            ReplyJson(res, ApiResult::Fail(30000, "invalid_json"));
+            return;
+        }
+
+        ReplyJson(res, authService_.DeleteUser(
+            userId,
+            isAdmin,
+            body.value("targetUserId", 0LL)
         ));
     }));
 

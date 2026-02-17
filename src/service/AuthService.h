@@ -1,19 +1,10 @@
 #pragma once
 #include <string>
 #include <unordered_map>
-#include <unordered_set>
 #include <mutex>
 #include <chrono>
 #include "core/Result.h"
 
-/**
- * @brief AuthService：认证与权限服务（第一版：内存实现）
- * 负责：
- * - 登录（用户名/密码 -> token）
- * - token 鉴权
- * - 公司级权限校验
- * - 管理员设置用户公司权限
- */
 class AuthService {
 public:
     AuthService() {
@@ -29,8 +20,8 @@ public:
         usersById_[finA.id] = finA;
         usersById_[finB.id] = finB;
 
-        userCompanyAccess_[finA.id].insert(1);
-        userCompanyAccess_[finB.id].insert(2);
+        userCompanyPermissions_[finA.id][1] = CompanyPermission{true, true};
+        userCompanyPermissions_[finB.id][2] = CompanyPermission{true, true};
     }
 
     inline ApiResult Login(const std::string& username, const std::string& password) {
@@ -70,23 +61,95 @@ public:
         if (uit == usersById_.end()) return false;
         if (uit->second.isAdmin) return true;
 
-        auto pit = userCompanyAccess_.find(userId);
-        if (pit == userCompanyAccess_.end()) return false;
-        return pit->second.count(companyId) > 0;
+        auto pit = userCompanyPermissions_.find(userId);
+        if (pit == userCompanyPermissions_.end()) return false;
+        auto cit = pit->second.find(companyId);
+        if (cit == pit->second.end()) return false;
+        return cit->second.canRead || cit->second.canWrite;
     }
 
+    inline bool CanModifyCompany(long long userId, long long companyId) const {
+        std::lock_guard<std::mutex> lock(mu_);
+        auto uit = usersById_.find(userId);
+        if (uit == usersById_.end()) return false;
+        if (uit->second.isAdmin) return true;
+
+        auto pit = userCompanyPermissions_.find(userId);
+        if (pit == userCompanyPermissions_.end()) return false;
+        auto cit = pit->second.find(companyId);
+        if (cit == pit->second.end()) return false;
+        return cit->second.canWrite;
+    }
+
+
+
     inline ApiResult SetCompanyAccess(long long operatorUserId, bool operatorIsAdmin, long long targetUserId, long long companyId, bool allow) {
+        if (allow) return AddCompanyPermission(operatorUserId, operatorIsAdmin, targetUserId, companyId, true, true);
+        return RemoveCompanyPermission(operatorUserId, operatorIsAdmin, targetUserId, companyId, true, true);
+    }
+
+    inline ApiResult AddCompanyPermission(long long operatorUserId, bool operatorIsAdmin, long long targetUserId,
+                                          long long companyId, bool grantRead, bool grantWrite) {
         (void)operatorUserId;
         if (!operatorIsAdmin) return ApiResult::Fail(30002, "forbidden");
         if (targetUserId <= 0 || companyId <= 0) return ApiResult::Fail(30003, "invalid_params");
 
         std::lock_guard<std::mutex> lock(mu_);
-        if (!usersById_.count(targetUserId)) return ApiResult::Fail(30004, "target_user_not_found");
+        auto it = usersById_.find(targetUserId);
+        if (it == usersById_.end()) return ApiResult::Fail(30004, "target_user_not_found");
+        if (it->second.isAdmin) return ApiResult::Fail(30003, "cannot_edit_admin_permissions");
 
-        if (allow) userCompanyAccess_[targetUserId].insert(companyId);
-        else userCompanyAccess_[targetUserId].erase(companyId);
+        CompanyPermission& perm = userCompanyPermissions_[targetUserId][companyId];
+        if (grantRead) {
+            perm.canRead = true;
+        }
+        if (grantWrite) {
+            perm.canWrite = true;
+            perm.canRead = true;
+        }
 
-        return ApiResult::Ok(Json{{"targetUserId", targetUserId}, {"companyId", companyId}, {"allow", allow}});
+        if (!perm.canRead && !perm.canWrite) {
+            userCompanyPermissions_[targetUserId].erase(companyId);
+        }
+
+        return ApiResult::Ok(Json{{"targetUserId", targetUserId}, {"companyId", companyId}, {"canRead", perm.canRead}, {"canWrite", perm.canWrite}});
+    }
+
+    inline ApiResult RemoveCompanyPermission(long long operatorUserId, bool operatorIsAdmin, long long targetUserId,
+                                             long long companyId, bool removeRead, bool removeWrite) {
+        (void)operatorUserId;
+        if (!operatorIsAdmin) return ApiResult::Fail(30002, "forbidden");
+        if (targetUserId <= 0 || companyId <= 0) return ApiResult::Fail(30003, "invalid_params");
+
+        std::lock_guard<std::mutex> lock(mu_);
+        auto it = usersById_.find(targetUserId);
+        if (it == usersById_.end()) return ApiResult::Fail(30004, "target_user_not_found");
+        if (it->second.isAdmin) return ApiResult::Fail(30003, "cannot_edit_admin_permissions");
+
+        auto pit = userCompanyPermissions_.find(targetUserId);
+        if (pit == userCompanyPermissions_.end() || pit->second.count(companyId) == 0) {
+            return ApiResult::Ok(Json{{"targetUserId", targetUserId}, {"companyId", companyId}, {"canRead", false}, {"canWrite", false}});
+        }
+
+        CompanyPermission& perm = pit->second[companyId];
+        if (removeRead) {
+            perm.canRead = false;
+            perm.canWrite = false;
+        }
+        if (removeWrite) {
+            perm.canWrite = false;
+        }
+        if (perm.canWrite && !perm.canRead) {
+            perm.canRead = true;
+        }
+
+        bool canRead = perm.canRead;
+        bool canWrite = perm.canWrite;
+        if (!canRead && !canWrite) {
+            pit->second.erase(companyId);
+        }
+
+        return ApiResult::Ok(Json{{"targetUserId", targetUserId}, {"companyId", companyId}, {"canRead", canRead}, {"canWrite", canWrite}});
     }
 
     inline ApiResult ListUsers(long long operatorUserId, bool operatorIsAdmin) const {
@@ -95,10 +158,42 @@ public:
         std::lock_guard<std::mutex> lock(mu_);
         Json users = Json::array();
         for (const auto& kv : usersById_) {
-            users.push_back(Json{{"userId", kv.second.id}, {"username", kv.second.username}, {"isAdmin", kv.second.isAdmin}});
+            Json companies = Json::array();
+            if (!kv.second.isAdmin) {
+                auto pit = userCompanyPermissions_.find(kv.first);
+                if (pit != userCompanyPermissions_.end()) {
+                    for (const auto& pkv : pit->second) {
+                        if (!pkv.second.canRead && !pkv.second.canWrite) continue;
+                        companies.push_back(Json{{"companyId", pkv.first}, {"canRead", pkv.second.canRead}, {"canWrite", pkv.second.canWrite}});
+                    }
+                }
+            }
+            users.push_back(Json{{"userId", kv.second.id}, {"username", kv.second.username}, {"isAdmin", kv.second.isAdmin}, {"companies", companies}});
         }
 
         return ApiResult::Ok(Json{{"operatorUserId", operatorUserId}, {"users", users}});
+    }
+
+    inline ApiResult DeleteUser(long long operatorUserId, bool operatorIsAdmin, long long targetUserId) {
+        (void)operatorUserId;
+        if (!operatorIsAdmin) return ApiResult::Fail(30002, "forbidden");
+        if (targetUserId <= 0 || targetUserId == 1) return ApiResult::Fail(30003, "invalid_params");
+
+        std::lock_guard<std::mutex> lock(mu_);
+        auto it = usersById_.find(targetUserId);
+        if (it == usersById_.end()) return ApiResult::Fail(30004, "target_user_not_found");
+        if (it->second.isAdmin) return ApiResult::Fail(30003, "cannot_delete_admin");
+
+        usersByName_.erase(it->second.username);
+        usersById_.erase(it);
+        userCompanyPermissions_.erase(targetUserId);
+
+        for (auto t = tokenToUserId_.begin(); t != tokenToUserId_.end();) {
+            if (t->second == targetUserId) t = tokenToUserId_.erase(t);
+            else ++t;
+        }
+
+        return ApiResult::Ok(Json{{"targetUserId", targetUserId}, {"deleted", true}});
     }
 
     inline ApiResult CreateUser(long long operatorUserId, bool operatorIsAdmin, long long userId,
@@ -141,9 +236,11 @@ public:
 
         Json companies = Json::array();
         if (!isAdmin) {
-            auto pit = userCompanyAccess_.find(userId);
-            if (pit != userCompanyAccess_.end()) {
-                for (auto cid : pit->second) companies.push_back(cid);
+            auto pit = userCompanyPermissions_.find(userId);
+            if (pit != userCompanyPermissions_.end()) {
+                for (const auto& pkv : pit->second) {
+                    if (pkv.second.canRead || pkv.second.canWrite) companies.push_back(pkv.first);
+                }
             }
         }
 
@@ -160,16 +257,15 @@ public:
             if (kv.second.isAdmin) continue;
 
             Json companies = Json::array();
-            auto pit = userCompanyAccess_.find(kv.first);
-            if (pit != userCompanyAccess_.end()) {
-                for (auto cid : pit->second) companies.push_back(cid);
+            auto pit = userCompanyPermissions_.find(kv.first);
+            if (pit != userCompanyPermissions_.end()) {
+                for (const auto& pkv : pit->second) {
+                    if (!pkv.second.canRead && !pkv.second.canWrite) continue;
+                    companies.push_back(Json{{"companyId", pkv.first}, {"canRead", pkv.second.canRead}, {"canWrite", pkv.second.canWrite}});
+                }
             }
 
-            users.push_back(Json{
-                {"userId", kv.second.id},
-                {"username", kv.second.username},
-                {"companies", companies}
-            });
+            users.push_back(Json{{"userId", kv.second.id}, {"username", kv.second.username}, {"companies", companies}});
         }
 
         return ApiResult::Ok(Json{{"operatorUserId", operatorUserId}, {"users", users}});
@@ -183,6 +279,11 @@ private:
         bool isAdmin{false};
     };
 
+    struct CompanyPermission {
+        bool canRead{false};
+        bool canWrite{false};
+    };
+
     inline std::string NewToken(long long userId) const {
         auto now = std::chrono::system_clock::now().time_since_epoch().count();
         return "tk_" + std::to_string(userId) + "_" + std::to_string(now);
@@ -192,5 +293,5 @@ private:
     std::unordered_map<std::string, User> usersByName_;
     std::unordered_map<long long, User> usersById_;
     std::unordered_map<std::string, long long> tokenToUserId_;
-    std::unordered_map<long long, std::unordered_set<long long>> userCompanyAccess_;
+    std::unordered_map<long long, std::unordered_map<long long, CompanyPermission>> userCompanyPermissions_;
 };
