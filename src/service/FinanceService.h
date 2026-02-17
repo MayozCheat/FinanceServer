@@ -26,6 +26,8 @@ public:
     ApiResult CreateApPaymentRecord(long long companyId, long long projectId, const std::string& vendorName,
                                     const std::string& bizType, double amount, const std::string& payDate);
 
+    ApiResult ListCostBenefit(long long companyId, const std::string& dateFrom, const std::string& dateTo);
+
     ApiResult ListApAccrual(long long companyId, const std::string& dateFrom, const std::string& dateTo);
     ApiResult ListApPayment(long long companyId, const std::string& dateFrom, const std::string& dateTo);
 

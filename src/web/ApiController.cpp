@@ -7,6 +7,16 @@ static void ReplyJson(httplib::Response& res, const ApiResult& r) {
     res.set_content(j.dump(), "application/json; charset=utf-8");
 }
 
+static bool ParseIdParam(const httplib::Request& req, const char* name, long long& out) {
+    if (!req.has_param(name)) return false;
+    try {
+        out = std::stoll(req.get_param_value(name));
+        return true;
+    } catch (...) {
+        return false;
+    }
+}
+
 static bool ExtractBearerToken(const httplib::Request& req, std::string& token) {
     std::string auth = req.get_header_value("Authorization");
     const std::string prefix = "Bearer ";
@@ -324,4 +334,90 @@ void ApiController::Register(HttpServer& http) {
 
         ReplyJson(res, financeService_.ListApPayment(companyId, req.get_param_value("date_from"), req.get_param_value("date_to")));
         });
+    s.Get("/api/me", [this, requireLogin](const httplib::Request& req, httplib::Response& res) {
+        long long userId = 0;
+        bool isAdmin = false;
+        if (!requireLogin(req, userId, isAdmin, res)) return;
+
+        ReplyJson(res, authService_.WhoAmI(userId, isAdmin));
+    });
+
+    s.Get("/api/finance/cost_benefit", [this, requireLogin](const httplib::Request& req, httplib::Response& res) {
+        if (!req.has_param("company_id") || !req.has_param("date_from") || !req.has_param("date_to")) {
+            ReplyJson(res, ApiResult::Fail(10000, "missing_params"));
+            return;
+        }
+
+        long long userId = 0;
+        bool isAdmin = false;
+        if (!requireLogin(req, userId, isAdmin, res)) return;
+
+        long long companyId = 0;
+        if (!ParseIdParam(req, "company_id", companyId)) {
+            ReplyJson(res, ApiResult::Fail(10001, "invalid_company_id"));
+            return;
+        }
+
+        if (!isAdmin && !authService_.CanAccessCompany(userId, companyId)) {
+            ReplyJson(res, ApiResult::Fail(30002, "forbidden"));
+            return;
+        }
+
+        ReplyJson(res, financeService_.ListCostBenefit(companyId, req.get_param_value("date_from"), req.get_param_value("date_to")));
+    });
+
+    s.Get("/api/admin/users", [this, requireLogin](const httplib::Request& req, httplib::Response& res) {
+        long long userId = 0;
+        bool isAdmin = false;
+        if (!requireLogin(req, userId, isAdmin, res)) return;
+
+        ReplyJson(res, authService_.ListUsers(userId, isAdmin));
+    });
+
+    s.Post("/api/admin/users", httplib::Server::Handler([this, requireLogin](const httplib::Request& req, httplib::Response& res) {
+        long long userId = 0;
+        bool isAdmin = false;
+        if (!requireLogin(req, userId, isAdmin, res)) return;
+
+        Json body;
+        try {
+            body = Json::parse(req.body);
+        }
+        catch (...) {
+            ReplyJson(res, ApiResult::Fail(30000, "invalid_json"));
+            return;
+        }
+
+        ReplyJson(res, authService_.CreateUser(
+            userId,
+            isAdmin,
+            body.value("userId", 0LL),
+            body.value("username", ""),
+            body.value("password", ""),
+            body.value("isAdmin", false)
+        ));
+    }));
+
+    s.Post("/api/admin/users/reset_password", httplib::Server::Handler([this, requireLogin](const httplib::Request& req, httplib::Response& res) {
+        long long userId = 0;
+        bool isAdmin = false;
+        if (!requireLogin(req, userId, isAdmin, res)) return;
+
+        Json body;
+        try {
+            body = Json::parse(req.body);
+        }
+        catch (...) {
+            ReplyJson(res, ApiResult::Fail(30000, "invalid_json"));
+            return;
+        }
+
+        ReplyJson(res, authService_.ResetPassword(
+            userId,
+            isAdmin,
+            body.value("targetUserId", 0LL),
+            body.value("newPassword", "")
+        ));
+    }));
+
 }

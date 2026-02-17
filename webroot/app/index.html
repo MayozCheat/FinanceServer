@@ -12,30 +12,41 @@
   </style>
 </head>
 <body>
-  <h2>财务系统（登录 + 权限 + 报表测试）</h2>
+  <h2>财务系统（登录 + 权限 + 财务录入）</h2>
 
   <div class="box">
-    <h3>1) 登录</h3>
+    <h3>1) 登录 / 当前用户</h3>
     用户名：<input id="username" value="finance_a">
     密码：<input id="password" value="finance123" type="password">
     <button onclick="login()">登录</button>
+    <button onclick="loadMe()">读取当前用户</button>
     <div>Token: <code id="tokenText">(未登录)</code></div>
   </div>
 
   <div class="box">
-    <h3>2) 报表</h3>
+    <h3>2) 报表与台账</h3>
     公司ID：<input id="companyId" value="1">
     起始日期：<input id="dateFrom" value="2026-01-01">
     结束日期：<input id="dateTo" value="2026-01-31">
     <div>
-      <button onclick="loadCostBenefit()">图1：成本效益</button>
+      <button onclick="loadCostBenefit()">图1：成本效益分析</button>
+      <button onclick="loadCostBenefitLedger()">台账：成本效益明细</button>
       <button onclick="loadApSummary()">图2：应付汇总</button>
+      <button onclick="loadApAccrual()">应付计提明细</button>
+      <button onclick="loadApPayment()">应付付款明细</button>
     </div>
   </div>
 
   <div class="box">
-    <h3>3) 管理员接口（查看权限）</h3>
-    <button onclick="loadPermissions()">读取权限清单（需 admin token）</button>
+    <h3>3) 管理员接口</h3>
+    新用户ID：<input id="newUserId" value="10">
+    新用户名：<input id="newUsername" value="finance_new">
+    新密码：<input id="newPassword" value="finance123">
+    <div>
+      <button onclick="loadUsers()">读取用户清单（管理员）</button>
+      <button onclick="createUser()">创建财务用户（管理员）</button>
+      <button onclick="loadPermissions()">读取权限清单（管理员）</button>
+    </div>
   </div>
 
   <h3>接口返回（JSON）</h3>
@@ -60,6 +71,10 @@ function getParams() {
   };
 }
 
+function show(data) {
+  document.getElementById('out').textContent = JSON.stringify(data, null, 2);
+}
+
 async function login() {
   const username = document.getElementById('username').value.trim();
   const password = document.getElementById('password').value.trim();
@@ -75,23 +90,64 @@ async function login() {
     document.getElementById('tokenText').textContent = token;
   }
 
-  document.getElementById('out').textContent = JSON.stringify(data, null, 2);
+  show(data);
+}
+
+async function loadMe() {
+  show(await fetchJson('/api/me'));
 }
 
 async function loadCostBenefit() {
   const p = getParams();
   const url = `/api/reports/cost_benefit?company_id=${encodeURIComponent(p.companyId)}&date_from=${encodeURIComponent(p.dateFrom)}&date_to=${encodeURIComponent(p.dateTo)}`;
-  document.getElementById('out').textContent = JSON.stringify(await fetchJson(url), null, 2);
+  show(await fetchJson(url));
+}
+
+async function loadCostBenefitLedger() {
+  const p = getParams();
+  const url = `/api/finance/cost_benefit?company_id=${encodeURIComponent(p.companyId)}&date_from=${encodeURIComponent(p.dateFrom)}&date_to=${encodeURIComponent(p.dateTo)}`;
+  show(await fetchJson(url));
 }
 
 async function loadApSummary() {
   const p = getParams();
   const url = `/api/reports/ap_summary?company_id=${encodeURIComponent(p.companyId)}&date_from=${encodeURIComponent(p.dateFrom)}&date_to=${encodeURIComponent(p.dateTo)}`;
-  document.getElementById('out').textContent = JSON.stringify(await fetchJson(url), null, 2);
+  show(await fetchJson(url));
+}
+
+async function loadApAccrual() {
+  const p = getParams();
+  const url = `/api/finance/ap_accrual?company_id=${encodeURIComponent(p.companyId)}&date_from=${encodeURIComponent(p.dateFrom)}&date_to=${encodeURIComponent(p.dateTo)}`;
+  show(await fetchJson(url));
+}
+
+async function loadApPayment() {
+  const p = getParams();
+  const url = `/api/finance/ap_payment?company_id=${encodeURIComponent(p.companyId)}&date_from=${encodeURIComponent(p.dateFrom)}&date_to=${encodeURIComponent(p.dateTo)}`;
+  show(await fetchJson(url));
 }
 
 async function loadPermissions() {
-  document.getElementById('out').textContent = JSON.stringify(await fetchJson('/api/admin/permissions'), null, 2);
+  show(await fetchJson('/api/admin/permissions'));
+}
+
+async function loadUsers() {
+  show(await fetchJson('/api/admin/users'));
+}
+
+async function createUser() {
+  const body = {
+    userId: Number(document.getElementById('newUserId').value.trim()),
+    username: document.getElementById('newUsername').value.trim(),
+    password: document.getElementById('newPassword').value.trim(),
+    isAdmin: false
+  };
+
+  show(await fetchJson('/api/admin/users', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  }));
 }
 </script>
 </body>
