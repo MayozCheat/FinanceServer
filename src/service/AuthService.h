@@ -89,6 +89,68 @@ public:
         return ApiResult::Ok(Json{{"targetUserId", targetUserId}, {"companyId", companyId}, {"allow", allow}});
     }
 
+    inline ApiResult ListUsers(long long operatorUserId, bool operatorIsAdmin) const {
+        if (!operatorIsAdmin) return ApiResult::Fail(30002, "forbidden");
+
+        std::lock_guard<std::mutex> lock(mu_);
+        Json users = Json::array();
+        for (const auto& kv : usersById_) {
+            users.push_back(Json{{"userId", kv.second.id}, {"username", kv.second.username}, {"isAdmin", kv.second.isAdmin}});
+        }
+
+        return ApiResult::Ok(Json{{"operatorUserId", operatorUserId}, {"users", users}});
+    }
+
+    inline ApiResult CreateUser(long long operatorUserId, bool operatorIsAdmin, long long userId,
+                                const std::string& username, const std::string& password, bool isAdmin) {
+        (void)operatorUserId;
+        if (!operatorIsAdmin) return ApiResult::Fail(30002, "forbidden");
+        if (userId <= 0 || username.empty() || password.empty()) return ApiResult::Fail(30003, "invalid_params");
+
+        std::lock_guard<std::mutex> lock(mu_);
+        if (usersById_.count(userId) > 0 || usersByName_.count(username) > 0) {
+            return ApiResult::Fail(30007, "user_already_exists");
+        }
+
+        User u{userId, username, password, isAdmin};
+        usersById_[u.id] = u;
+        usersByName_[u.username] = u;
+
+        return ApiResult::Ok(Json{{"userId", u.id}, {"username", u.username}, {"isAdmin", u.isAdmin}});
+    }
+
+    inline ApiResult ResetPassword(long long operatorUserId, bool operatorIsAdmin, long long targetUserId,
+                                   const std::string& newPassword) {
+        (void)operatorUserId;
+        if (!operatorIsAdmin) return ApiResult::Fail(30002, "forbidden");
+        if (targetUserId <= 0 || newPassword.empty()) return ApiResult::Fail(30003, "invalid_params");
+
+        std::lock_guard<std::mutex> lock(mu_);
+        auto it = usersById_.find(targetUserId);
+        if (it == usersById_.end()) return ApiResult::Fail(30004, "target_user_not_found");
+
+        it->second.password = newPassword;
+        usersByName_[it->second.username] = it->second;
+        return ApiResult::Ok(Json{{"targetUserId", targetUserId}});
+    }
+
+    inline ApiResult WhoAmI(long long userId, bool isAdmin) const {
+        std::lock_guard<std::mutex> lock(mu_);
+        auto it = usersById_.find(userId);
+        if (it == usersById_.end()) return ApiResult::Fail(30006, "invalid_token");
+
+        Json companies = Json::array();
+        if (!isAdmin) {
+            auto pit = userCompanyAccess_.find(userId);
+            if (pit != userCompanyAccess_.end()) {
+                for (auto cid : pit->second) companies.push_back(cid);
+            }
+        }
+
+        Json data{{"userId", it->second.id}, {"username", it->second.username}, {"isAdmin", it->second.isAdmin}, {"companies", companies}};
+        return ApiResult::Ok(data);
+    }
+
     inline ApiResult ListPermissions(long long operatorUserId, bool operatorIsAdmin) const {
         if (!operatorIsAdmin) return ApiResult::Fail(30002, "forbidden");
 

@@ -4,7 +4,9 @@
 #include "core/HttpServer.h"
 #include "db/Db.h"
 #include "repo/ReportRepo.h"
+#include "repo/FinanceRepo.h"
 #include "service/ReportService.h"
+#include "service/FinanceService.h"
 #include "service/AuthService.h"
 #include "web/ApiController.h"
 #include "web/AuthController.h"
@@ -30,7 +32,9 @@ private:
     Db db_;
 
     std::unique_ptr<ReportRepo> reportRepo_;
+    std::unique_ptr<FinanceRepo> financeRepo_;
     std::unique_ptr<ReportService> reportService_;
+    std::unique_ptr<FinanceService> financeService_;
     std::unique_ptr<AuthService> authService_;
     std::unique_ptr<ApiController> apiController_;
     std::unique_ptr<AuthController> authController_;

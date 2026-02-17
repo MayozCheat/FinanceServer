@@ -1,6 +1,7 @@
 #pragma once
 #include "core/HttpServer.h"
 #include "service/ReportService.h"
+#include "service/FinanceService.h"
 #include "service/AuthService.h"
 
 /**
@@ -13,11 +14,12 @@
  */
 class ApiController {
 public:
-    ApiController(ReportService& reportService, AuthService& authService)
-        : reportService_(reportService), authService_(authService) {}
+    ApiController(ReportService& reportService, FinanceService& financeService, AuthService& authService)
+        : reportService_(reportService), financeService_(financeService), authService_(authService) {}
     void Register(HttpServer& http);
 
 private:
     ReportService& reportService_;
+    FinanceService& financeService_;
     AuthService& authService_;
 };
