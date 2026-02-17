@@ -14,13 +14,15 @@ bool App::Init(const std::string& configPath) {
         return false;
     }
 
-    // 依赖注入：db -> repo -> service -> controller
     reportRepo_ = std::make_unique<ReportRepo>(db_);
     reportService_ = std::make_unique<ReportService>(*reportRepo_);
-    apiController_ = std::make_unique<ApiController>(*reportService_);
+    authService_ = std::make_unique<AuthService>();
+    apiController_ = std::make_unique<ApiController>(*reportService_, *authService_);
+    authController_ = std::make_unique<AuthController>(*authService_);
     staticController_ = std::make_unique<StaticController>(cfg_.WebRoot());
 
     apiController_->Register(http_);
+    authController_->Register(http_);
     staticController_->Register(http_);
 
     Logger::Instance().Info("【启动】初始化完成");

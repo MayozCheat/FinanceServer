@@ -1,6 +1,7 @@
 #pragma once
 #include "core/HttpServer.h"
 #include "service/ReportService.h"
+#include "service/AuthService.h"
 
 /**
  * @brief ApiController：HTTP接口层
@@ -12,9 +13,11 @@
  */
 class ApiController {
 public:
-    explicit ApiController(ReportService& reportService) : reportService_(reportService) {}
+    ApiController(ReportService& reportService, AuthService& authService)
+        : reportService_(reportService), authService_(authService) {}
     void Register(HttpServer& http);
 
 private:
     ReportService& reportService_;
+    AuthService& authService_;
 };
