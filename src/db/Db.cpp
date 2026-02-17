@@ -65,3 +65,25 @@ bool Db::Query(const std::string& sqlText,
         return false;
     }
 }
+
+bool Db::Execute(const std::string& sqlText,
+    int& outAffectedRows,
+    std::string& outErr) {
+    outAffectedRows = 0;
+    outErr.clear();
+
+    if (!conn_) {
+        outErr = "db_not_connected";
+        return false;
+    }
+
+    try {
+        std::unique_ptr<sql::Statement> stmt(conn_->createStatement());
+        outAffectedRows = stmt->executeUpdate(sqlText);
+        return true;
+    }
+    catch (const std::exception& e) {
+        outErr = e.what();
+        return false;
+    }
+}

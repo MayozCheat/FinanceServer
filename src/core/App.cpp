@@ -15,9 +15,11 @@ bool App::Init(const std::string& configPath) {
     }
 
     reportRepo_ = std::make_unique<ReportRepo>(db_);
+    financeRepo_ = std::make_unique<FinanceRepo>(db_);
     reportService_ = std::make_unique<ReportService>(*reportRepo_);
+    financeService_ = std::make_unique<FinanceService>(*financeRepo_);
     authService_ = std::make_unique<AuthService>();
-    apiController_ = std::make_unique<ApiController>(*reportService_, *authService_);
+    apiController_ = std::make_unique<ApiController>(*reportService_, *financeService_, *authService_);
     authController_ = std::make_unique<AuthController>(*authService_);
     staticController_ = std::make_unique<StaticController>(cfg_.WebRoot());
 
