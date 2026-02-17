@@ -14,6 +14,7 @@
     .user-table { width:100%; border-collapse:collapse; }
     .user-table th,.user-table td { border:1px solid #ececec; padding:8px; text-align:left; }
     .hidden { display:none; }
+    .tip { color:#666; margin-top:6px; }
   </style>
 </head>
 <body>
@@ -21,11 +22,14 @@
 
   <div class="box">
     <h3>1) 登录 / 当前用户</h3>
-    用户名：<input id="username" value="finance_a">
-    密码：<input id="password" value="finance123" type="password">
+    用户名：<input id="username" value="admin">
+    密码：<input id="password" value="admin123" type="password">
+    <button onclick="fillAdminAndLogin()">一键管理员登录</button>
+    <button onclick="fillFinanceAndLogin()">一键财务登录</button>
     <button onclick="login()">登录</button>
     <button onclick="loadMe()">读取当前用户</button>
     <div>Token: <code id="tokenText">(未登录)</code></div>
+    <div id="roleText" class="tip">当前角色：未知。管理员接口需 admin 账号。</div>
   </div>
 
   <div class="box">
@@ -44,6 +48,7 @@
 
   <div class="box">
     <h3>3) 管理员接口</h3>
+    <div class="tip">提示：请先使用管理员账号登录，否则会返回 forbidden。</div>
     新用户ID：<input id="newUserId" value="10">
     新用户名：<input id="newUsername" value="finance_new">
     新密码：<input id="newPassword" value="finance123">
@@ -56,11 +61,11 @@
     <hr>
     用户ID：<input id="permUserId" value="2">
     公司ID：<input id="permCompanyId" value="1">
-    <label><input id="grantRead" type="checkbox">添加读取权限</label>
-    <label><input id="grantWrite" type="checkbox" checked>添加修改权限</label>
+    <label><input id="grantRead" type="checkbox" checked>添加读取权限</label>
+    <label><input id="grantWrite" type="checkbox">添加修改权限</label>
     <button onclick="addPermission()">添加公司权限</button>
     <br>
-    <label><input id="removeRead" type="checkbox" checked>删除读取权限</label>
+    <label><input id="removeRead" type="checkbox">删除读取权限</label>
     <label><input id="removeWrite" type="checkbox" checked>删除修改权限</label>
     <button onclick="removePermission()">删除公司权限</button>
     <button onclick="loadPermissions()">读取权限清单（管理员）</button>
@@ -77,6 +82,8 @@
 <script>
 let token = "";
 
+function el(id) { return document.getElementById(id); }
+
 async function fetchJson(url, options = {}) {
   const headers = Object.assign({}, options.headers || {});
   if (token) headers["Authorization"] = `Bearer ${token}`;
@@ -86,27 +93,51 @@ async function fetchJson(url, options = {}) {
 
 function getParams() {
   return {
-    companyId: document.getElementById('companyId').value.trim(),
-    dateFrom: document.getElementById('dateFrom').value.trim(),
-    dateTo: document.getElementById('dateTo').value.trim()
+    companyId: el('companyId').value.trim(),
+    dateFrom: el('dateFrom').value.trim(),
+    dateTo: el('dateTo').value.trim()
   };
 }
 
-function show(data) { document.getElementById('out').textContent = JSON.stringify(data, null, 2); }
+function show(data) { el('out').textContent = JSON.stringify(data, null, 2); }
+
+async function refreshRole() {
+  if (!token) {
+    el('roleText').textContent = '当前角色：未登录。管理员接口需 admin 账号。';
+    return;
+  }
+  const me = await fetchJson('/api/me');
+  if (me.ok && me.data) {
+    el('roleText').textContent = `当前角色：${me.data.username} (${me.data.isAdmin ? '管理员' : '普通用户'})`;
+  }
+}
 
 async function login() {
   const data = await fetchJson('/api/auth/login', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ username: username.value.trim(), password: password.value.trim() })
+    body: JSON.stringify({ username: el('username').value.trim(), password: el('password').value.trim() })
   });
   if (data.ok && data.data && data.data.token) {
     token = data.data.token;
-    tokenText.textContent = token;
+    el('tokenText').textContent = token;
+    await refreshRole();
   }
   show(data);
 }
 
-async function loadMe() { show(await fetchJson('/api/me')); }
+async function fillAdminAndLogin() {
+  el('username').value = 'admin';
+  el('password').value = 'admin123';
+  await login();
+}
+
+async function fillFinanceAndLogin() {
+  el('username').value = 'finance_a';
+  el('password').value = 'finance123';
+  await login();
+}
+
+async function loadMe() { const data = await fetchJson('/api/me'); show(data); }
 async function loadCostBenefit() { const p = getParams(); show(await fetchJson(`/api/reports/cost_benefit?company_id=${encodeURIComponent(p.companyId)}&date_from=${encodeURIComponent(p.dateFrom)}&date_to=${encodeURIComponent(p.dateTo)}`)); }
 async function loadCostBenefitLedger() { const p = getParams(); show(await fetchJson(`/api/finance/cost_benefit?company_id=${encodeURIComponent(p.companyId)}&date_from=${encodeURIComponent(p.dateFrom)}&date_to=${encodeURIComponent(p.dateTo)}`)); }
 async function loadApSummary() { const p = getParams(); show(await fetchJson(`/api/reports/ap_summary?company_id=${encodeURIComponent(p.companyId)}&date_from=${encodeURIComponent(p.dateFrom)}&date_to=${encodeURIComponent(p.dateTo)}`)); }
@@ -123,14 +154,14 @@ async function loadUsers() {
 async function createUser() {
   show(await fetchJson('/api/admin/users', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ userId: Number(newUserId.value.trim()), username: newUsername.value.trim(), password: newPassword.value.trim(), isAdmin: false })
+    body: JSON.stringify({ userId: Number(el('newUserId').value.trim()), username: el('newUsername').value.trim(), password: el('newPassword').value.trim(), isAdmin: false })
   }));
 }
 
 async function deleteUser() {
   const data = await fetchJson('/api/admin/users/delete', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ targetUserId: Number(deleteUserId.value.trim()) })
+    body: JSON.stringify({ targetUserId: Number(el('deleteUserId').value.trim()) })
   });
   show(data);
   if (data.ok) await loadUsers();
@@ -140,8 +171,8 @@ async function addPermission() {
   const data = await fetchJson('/api/admin/permissions/company/add', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      targetUserId: Number(permUserId.value.trim()), companyId: Number(permCompanyId.value.trim()),
-      grantRead: grantRead.checked, grantWrite: grantWrite.checked
+      targetUserId: Number(el('permUserId').value.trim()), companyId: Number(el('permCompanyId').value.trim()),
+      grantRead: el('grantRead').checked, grantWrite: el('grantWrite').checked
     })
   });
   show(data);
@@ -152,8 +183,8 @@ async function removePermission() {
   const data = await fetchJson('/api/admin/permissions/company/remove', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      targetUserId: Number(permUserId.value.trim()), companyId: Number(permCompanyId.value.trim()),
-      removeRead: removeRead.checked, removeWrite: removeWrite.checked
+      targetUserId: Number(el('permUserId').value.trim()), companyId: Number(el('permCompanyId').value.trim()),
+      removeRead: el('removeRead').checked, removeWrite: el('removeWrite').checked
     })
   });
   show(data);
@@ -176,7 +207,7 @@ async function onPermissionToggle(userId, companyId, type, checked) {
 }
 
 function renderUsers(users) {
-  const root = document.getElementById('userCards');
+  const root = el('userCards');
   root.innerHTML = '';
   users.forEach((u, idx) => {
     const card = document.createElement('div');
