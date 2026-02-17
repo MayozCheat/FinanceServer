@@ -139,6 +139,33 @@ ApiResult FinanceRepo::CreateApPayment(long long companyId, long long projectId,
     return ApiResult::Ok(Json{{"affectedRows", affected}});
 }
 
+ApiResult FinanceRepo::ListCostBenefit(long long companyId, const std::string& dateFrom, const std::string& dateTo) {
+    std::ostringstream oss;
+    oss << "SELECT id, company_id, project_id, month, output_value, tax, material_cost, machine_cost, machine_depr_cost, "
+        << "labor_mgmt_cost, labor_project_cost, other_cost, finance_fee, nonprod_income, nonprod_expense, income_tax, assess_profit, remark "
+        << "FROM cost_benefit_monthly "
+        << "WHERE company_id=" << companyId << " AND month>='" << EscapeSql(dateFrom) << "' AND month<='" << EscapeSql(dateTo) << "' "
+        << "ORDER BY month DESC, id DESC;";
+
+    std::vector<std::string> cols;
+    std::vector<Db::Row> rows;
+    std::string err;
+    if (!db_.Query(oss.str(), cols, rows, err)) {
+        return ApiResult::Fail(20001, "db_query_failed");
+    }
+
+    Json arr = Json::array();
+    for (const auto& r : rows) {
+        arr.push_back(Json{{"id", std::stoll(r.cols[0])}, {"companyId", std::stoll(r.cols[1])}, {"projectId", std::stoll(r.cols[2])},
+                           {"month", r.cols[3]}, {"outputValue", std::stod(r.cols[4])}, {"tax", std::stod(r.cols[5])},
+                           {"materialCost", std::stod(r.cols[6])}, {"machineCost", std::stod(r.cols[7])}, {"machineDeprCost", std::stod(r.cols[8])},
+                           {"laborMgmtCost", std::stod(r.cols[9])}, {"laborProjectCost", std::stod(r.cols[10])}, {"otherCost", std::stod(r.cols[11])},
+                           {"financeFee", std::stod(r.cols[12])}, {"nonprodIncome", std::stod(r.cols[13])}, {"nonprodExpense", std::stod(r.cols[14])},
+                           {"incomeTax", std::stod(r.cols[15])}, {"assessProfit", std::stod(r.cols[16])}, {"remark", r.cols[17]}});
+    }
+    return ApiResult::Ok(Json{{"rows", arr}});
+}
+
 ApiResult FinanceRepo::ListApAccrual(long long companyId, const std::string& dateFrom, const std::string& dateTo) {
     std::ostringstream oss;
     oss << "SELECT id, company_id, project_id, vendor_name, biz_type, amount, biz_date FROM ap_accrual "

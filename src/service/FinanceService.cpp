@@ -60,6 +60,13 @@ ApiResult FinanceService::CreateApPaymentRecord(long long companyId, long long p
     return repo_.CreateApPayment(companyId, projectId, vendorName, bizType, amount, payDate);
 }
 
+ApiResult FinanceService::ListCostBenefit(long long companyId, const std::string& dateFrom, const std::string& dateTo) {
+    if (companyId <= 0 || !IsDateFormatOk(dateFrom) || !IsDateFormatOk(dateTo)) {
+        return ApiResult::Fail(30003, "invalid_params");
+    }
+    return repo_.ListCostBenefit(companyId, dateFrom, dateTo);
+}
+
 ApiResult FinanceService::ListApAccrual(long long companyId, const std::string& dateFrom, const std::string& dateTo) {
     if (companyId <= 0 || !IsDateFormatOk(dateFrom) || !IsDateFormatOk(dateTo)) {
         return ApiResult::Fail(30003, "invalid_params");
