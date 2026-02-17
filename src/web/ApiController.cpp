@@ -36,7 +36,7 @@ void ApiController::Register(HttpServer& http) {
         res.set_content("ok", "text/plain; charset=utf-8");
     });
 
-    s.Get("/api/companies", [this, &requireLogin](const httplib::Request& req, httplib::Response& res) {
+    s.Get("/api/companies", [this, requireLogin](const httplib::Request& req, httplib::Response& res) {
         long long userId = 0;
         bool isAdmin = false;
         if (!requireLogin(req, userId, isAdmin, res)) return;
@@ -46,7 +46,7 @@ void ApiController::Register(HttpServer& http) {
         ReplyJson(res, financeService_.ListCompanies());
     });
 
-    s.Get("/api/projects", [this, &requireLogin](const httplib::Request& req, httplib::Response& res) {
+    s.Get("/api/projects", [this, requireLogin](const httplib::Request& req, httplib::Response& res) {
         long long userId = 0;
         bool isAdmin = false;
         if (!requireLogin(req, userId, isAdmin, res)) return;
@@ -69,7 +69,7 @@ void ApiController::Register(HttpServer& http) {
         ReplyJson(res, financeService_.ListProjects(companyId));
     });
 
-    s.Post("/api/admin/companies", httplib::Server::Handler([this, &requireLogin](const httplib::Request& req, httplib::Response& res) {
+    s.Post("/api/admin/companies", httplib::Server::Handler([this, requireLogin](const httplib::Request& req, httplib::Response& res) {
         long long userId = 0;
         bool isAdmin = false;
         if (!requireLogin(req, userId, isAdmin, res)) return;
@@ -89,7 +89,7 @@ void ApiController::Register(HttpServer& http) {
         ReplyJson(res, financeService_.CreateCompany(body.value("id", 0LL), body.value("name", "")));
     }));
 
-    s.Post("/api/admin/projects", httplib::Server::Handler([this, &requireLogin](const httplib::Request& req, httplib::Response& res) {
+    s.Post("/api/admin/projects", httplib::Server::Handler([this, requireLogin](const httplib::Request& req, httplib::Response& res) {
         long long userId = 0;
         bool isAdmin = false;
         if (!requireLogin(req, userId, isAdmin, res)) return;
@@ -109,7 +109,7 @@ void ApiController::Register(HttpServer& http) {
         ReplyJson(res, financeService_.CreateProject(body.value("id", 0LL), body.value("companyId", 0LL), body.value("name", "")));
     }));
 
-    s.Get("/api/reports/cost_benefit", [this, &requireLogin](const httplib::Request& req, httplib::Response& res) {
+    s.Get("/api/reports/cost_benefit", [this, requireLogin](const httplib::Request& req, httplib::Response& res) {
         if (!req.has_param("company_id") || !req.has_param("date_from") || !req.has_param("date_to")) {
             ReplyJson(res, ApiResult::Fail(10000, "missing_params"));
             return;
@@ -137,7 +137,7 @@ void ApiController::Register(HttpServer& http) {
         ReplyJson(res, reportService_.CostBenefit(companyId, dateFrom, dateTo));
     });
 
-    s.Get("/api/reports/ap_summary", [this, &requireLogin](const httplib::Request& req, httplib::Response& res) {
+    s.Get("/api/reports/ap_summary", [this, requireLogin](const httplib::Request& req, httplib::Response& res) {
         if (!req.has_param("company_id") || !req.has_param("date_from") || !req.has_param("date_to")) {
             ReplyJson(res, ApiResult::Fail(10000, "missing_params"));
             return;
@@ -165,7 +165,7 @@ void ApiController::Register(HttpServer& http) {
         ReplyJson(res, reportService_.ApSummary(companyId, dateFrom, dateTo));
     });
 
-    s.Post("/api/finance/cost_benefit", httplib::Server::Handler([this, &requireLogin](const httplib::Request& req, httplib::Response& res) {
+    s.Post("/api/finance/cost_benefit", httplib::Server::Handler([this, requireLogin](const httplib::Request& req, httplib::Response& res) {
         long long userId = 0;
         bool isAdmin = false;
         if (!requireLogin(req, userId, isAdmin, res)) return;
@@ -205,7 +205,7 @@ void ApiController::Register(HttpServer& http) {
         ));
     }));
 
-    s.Post("/api/finance/ap_accrual", httplib::Server::Handler([this, &requireLogin](const httplib::Request& req, httplib::Response& res) {
+    s.Post("/api/finance/ap_accrual", httplib::Server::Handler([this, requireLogin](const httplib::Request& req, httplib::Response& res) {
         long long userId = 0;
         bool isAdmin = false;
         if (!requireLogin(req, userId, isAdmin, res)) return;
@@ -234,7 +234,7 @@ void ApiController::Register(HttpServer& http) {
         ));
     }));
 
-    s.Post("/api/finance/ap_payment", httplib::Server::Handler([this, &requireLogin](const httplib::Request& req, httplib::Response& res) {
+    s.Post("/api/finance/ap_payment", httplib::Server::Handler([this, requireLogin](const httplib::Request& req, httplib::Response& res) {
         long long userId = 0;
         bool isAdmin = false;
         if (!requireLogin(req, userId, isAdmin, res)) return;
@@ -263,7 +263,7 @@ void ApiController::Register(HttpServer& http) {
         ));
     }));
 
-    s.Get("/api/finance/ap_accrual", [this, &requireLogin](const httplib::Request& req, httplib::Response& res) {
+    s.Get("/api/finance/ap_accrual", [this, requireLogin](const httplib::Request& req, httplib::Response& res) {
         if (!req.has_param("company_id") || !req.has_param("date_from") || !req.has_param("date_to")) {
             ReplyJson(res, ApiResult::Fail(10000, "missing_params"));
             return;
@@ -289,7 +289,7 @@ void ApiController::Register(HttpServer& http) {
         ReplyJson(res, financeService_.ListApAccrual(companyId, req.get_param_value("date_from"), req.get_param_value("date_to")));
     });
 
-    s.Get("/api/finance/ap_payment", [this, &requireLogin](const httplib::Request& req, httplib::Response& res) {
+    s.Get("/api/finance/ap_payment", [this, requireLogin](const httplib::Request& req, httplib::Response& res) {
         if (!req.has_param("company_id") || !req.has_param("date_from") || !req.has_param("date_to")) {
             ReplyJson(res, ApiResult::Fail(10000, "missing_params"));
             return;
