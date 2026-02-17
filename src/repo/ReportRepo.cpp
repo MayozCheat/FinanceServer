@@ -3,6 +3,12 @@
 #include <sstream>
 #include <unordered_map>
 
+namespace {
+bool IsTableMissingError(const std::string& err) {
+    return err.find("doesn't exist") != std::string::npos;
+}
+}
+
 ApiResult ReportRepo::QueryCostBenefit(long long companyId, const std::string& dateFrom, const std::string& dateTo) {
     std::ostringstream oss;
     oss
@@ -28,6 +34,9 @@ ApiResult ReportRepo::QueryCostBenefit(long long companyId, const std::string& d
 
     if (!db_.Query(oss.str(), cols, rows, err)) {
         Logger::Instance().Error("【报表】成本效益查询失败：" + err);
+        if (IsTableMissingError(err)) {
+            return ApiResult::Fail(20011, "table_not_found_cost_benefit_monthly_or_related");
+        }
         return ApiResult::Fail(20001, "db_query_failed");
     }
 
@@ -58,6 +67,9 @@ ApiResult ReportRepo::QueryApSummary(long long companyId, const std::string& dat
     std::string err;
     if (!db_.Query(acc.str(), accCols, accRows, err)) {
         Logger::Instance().Error("【报表】挂账汇总查询失败：" + err);
+        if (IsTableMissingError(err)) {
+            return ApiResult::Fail(20012, "table_not_found_ap_accrual_or_related");
+        }
         return ApiResult::Fail(20002, "db_query_failed");
     }
 
@@ -76,6 +88,9 @@ ApiResult ReportRepo::QueryApSummary(long long companyId, const std::string& dat
     std::vector<Db::Row> payRows;
     if (!db_.Query(pay.str(), payCols, payRows, err)) {
         Logger::Instance().Error("【报表】付款汇总查询失败：" + err);
+        if (IsTableMissingError(err)) {
+            return ApiResult::Fail(20013, "table_not_found_ap_payment_or_related");
+        }
         return ApiResult::Fail(20003, "db_query_failed");
     }
 

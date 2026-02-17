@@ -1,39 +1,35 @@
-#include <iostream>  // È·±£°üº¬ÁËÍ·ÎÄ¼ş
-#include <fstream>    // È·±£°üº¬ÁËÎÄ¼şÁ÷Í·ÎÄ¼ş
 #include "core/Config.h"
-#include "json.hpp"   // Èç¹ûÄãÊ¹ÓÃÁË nlohmann/json ½âÎö¿â£¬¼ÇµÃ°üÀ¨Ëü
+#include "core/Logger.h"
+#include <filesystem>
+#include <fstream>
 
+namespace {
 void SetWorkingDirectory() {
-    // ÉèÖÃµ±Ç°¹¤×÷Ä¿Â¼Îª D:/FinanceServer/build/Release/
+    // Windows éƒ¨ç½²æ—¶ä¿æŒä¸ç°æœ‰å‘å¸ƒç›®å½•ä¸€è‡´
     std::filesystem::current_path("D:/FinanceServer/build/Release");
+}
 }
 
 bool Config::Load(const std::string& path) {
+    SetWorkingDirectory();
 
-     SetWorkingDirectory();  // ÉèÖÃ¹¤×÷Ä¿Â¼
-    // Êä³öµ±Ç°¹¤×÷Ä¿Â¼
-    std::cout << "µ±Ç°¹¤×÷Ä¿Â¼£º" << std::filesystem::current_path() << std::endl;
+    Logger::Instance().Info("[é…ç½®] å½“å‰å·¥ä½œç›®å½•: " + std::filesystem::current_path().string());
+    Logger::Instance().Info("[é…ç½®] è¯»å–é…ç½®æ–‡ä»¶: " + path);
 
-    std::cout << "ÕıÔÚ¶ÁÈ¡ÅäÖÃÎÄ¼şÂ·¾¶£º" << path << std::endl;  // ´òÓ¡Â·¾¶
-
-    // ¼ì²éÊÇ·ñÄÜ´ò¿ªÅäÖÃÎÄ¼ş
-    std::ifstream ifs(path);  // ÕâÀïÊÇÎÄ¼şÁ÷£¬È·±£Ã»ÓĞÒÅÂ©·ÖºÅ
+    std::ifstream ifs(path);
     if (!ifs.is_open()) {
-        std::cerr << "ÎŞ·¨´ò¿ªÎÄ¼ş: " << path << std::endl; // ´òÓ¡´íÎóĞÅÏ¢
+        Logger::Instance().Error("[é…ç½®] æ— æ³•æ‰“å¼€é…ç½®æ–‡ä»¶: " + path);
         return false;
     }
 
-    // Èç¹ûÎÄ¼ş³É¹¦´ò¿ª£¬¶ÁÈ¡ÄÚÈİ
-    nlohmann::json j;
-    ifs >> j;  // ¶ÁÈ¡ JSON ÎÄ¼şÄÚÈİ
+    Json j;
+    ifs >> j;
 
-    std::cout << "ÅäÖÃÎÄ¼şÄÚÈİ£º" << j.dump(4) << std::endl;  // ´òÓ¡ JSON ÄÚÈİ£¨¸ñÊ½»¯Êä³ö£©
-
-    // ¼ÓÔØÅäÖÃÎÄ¼şÄÚÈİ
     if (j.contains("server")) {
         server_.host = j["server"].value("host", server_.host);
         server_.port = j["server"].value("port", server_.port);
     }
+
     if (j.contains("mysql")) {
         mysql_.host = j["mysql"].value("host", mysql_.host);
         mysql_.port = j["mysql"].value("port", mysql_.port);
@@ -41,6 +37,7 @@ bool Config::Load(const std::string& path) {
         mysql_.password = j["mysql"].value("password", mysql_.password);
         mysql_.database = j["mysql"].value("database", mysql_.database);
     }
+
     webroot_ = j.value("webroot", webroot_);
     return true;
 }

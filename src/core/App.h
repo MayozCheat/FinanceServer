@@ -5,7 +5,9 @@
 #include "db/Db.h"
 #include "repo/ReportRepo.h"
 #include "service/ReportService.h"
+#include "service/AuthService.h"
 #include "web/ApiController.h"
+#include "web/AuthController.h"
 #include "web/StaticController.h"
 
 /**
@@ -29,6 +31,8 @@ private:
 
     std::unique_ptr<ReportRepo> reportRepo_;
     std::unique_ptr<ReportService> reportService_;
+    std::unique_ptr<AuthService> authService_;
     std::unique_ptr<ApiController> apiController_;
+    std::unique_ptr<AuthController> authController_;
     std::unique_ptr<StaticController> staticController_;
 };
