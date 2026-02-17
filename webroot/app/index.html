@@ -2,34 +2,56 @@
 <html lang="zh">
 <head>
   <meta charset="utf-8"/>
-  <title>财务报表测试</title>
+  <title>财务系统测试页</title>
   <style>
     body { font-family: "Microsoft YaHei", Arial; padding: 16px; }
-    input { padding: 6px; margin-right: 10px; }
-    button { padding: 6px 12px; margin-right: 8px; }
+    input { padding: 6px; margin-right: 10px; margin-bottom: 8px; }
+    button { padding: 6px 12px; margin-right: 8px; margin-bottom: 8px; }
     pre { background:#f6f6f6; padding:12px; border-radius:8px; overflow:auto; }
+    .box { border: 1px solid #ddd; border-radius: 8px; padding: 12px; margin-bottom: 12px; }
   </style>
 </head>
 <body>
-  <h2>财务报表（测试页）</h2>
+  <h2>财务系统（登录 + 权限 + 报表测试）</h2>
 
-  公司ID：<input id="companyId" value="1">
-  起始日期：<input id="dateFrom" value="2026-01-01">
-  结束日期：<input id="dateTo" value="2026-01-31">
+  <div class="box">
+    <h3>1) 登录</h3>
+    用户名：<input id="username" value="finance_a">
+    密码：<input id="password" value="finance123" type="password">
+    <button onclick="login()">登录</button>
+    <div>Token: <code id="tokenText">(未登录)</code></div>
+  </div>
 
-  <div style="margin-top:10px;">
-    <button onclick="loadCostBenefit()">图1：成本效益</button>
-    <button onclick="loadApSummary()">图2：应付汇总</button>
+  <div class="box">
+    <h3>2) 报表</h3>
+    公司ID：<input id="companyId" value="1">
+    起始日期：<input id="dateFrom" value="2026-01-01">
+    结束日期：<input id="dateTo" value="2026-01-31">
+    <div>
+      <button onclick="loadCostBenefit()">图1：成本效益</button>
+      <button onclick="loadApSummary()">图2：应付汇总</button>
+    </div>
+  </div>
+
+  <div class="box">
+    <h3>3) 管理员接口（查看权限）</h3>
+    <button onclick="loadPermissions()">读取权限清单（需 admin token）</button>
   </div>
 
   <h3>接口返回（JSON）</h3>
   <pre id="out">点击按钮开始测试</pre>
 
 <script>
-async function fetchJson(url) {
-  const r = await fetch(url);
+let token = "";
+
+async function fetchJson(url, options = {}) {
+  const headers = Object.assign({}, options.headers || {});
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+
+  const r = await fetch(url, Object.assign({}, options, { headers }));
   return await r.json();
 }
+
 function getParams() {
   return {
     companyId: document.getElementById('companyId').value.trim(),
@@ -37,15 +59,39 @@ function getParams() {
     dateTo: document.getElementById('dateTo').value.trim()
   };
 }
+
+async function login() {
+  const username = document.getElementById('username').value.trim();
+  const password = document.getElementById('password').value.trim();
+
+  const data = await fetchJson('/api/auth/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, password })
+  });
+
+  if (data.ok && data.data && data.data.token) {
+    token = data.data.token;
+    document.getElementById('tokenText').textContent = token;
+  }
+
+  document.getElementById('out').textContent = JSON.stringify(data, null, 2);
+}
+
 async function loadCostBenefit() {
   const p = getParams();
   const url = `/api/reports/cost_benefit?company_id=${encodeURIComponent(p.companyId)}&date_from=${encodeURIComponent(p.dateFrom)}&date_to=${encodeURIComponent(p.dateTo)}`;
   document.getElementById('out').textContent = JSON.stringify(await fetchJson(url), null, 2);
 }
+
 async function loadApSummary() {
   const p = getParams();
   const url = `/api/reports/ap_summary?company_id=${encodeURIComponent(p.companyId)}&date_from=${encodeURIComponent(p.dateFrom)}&date_to=${encodeURIComponent(p.dateTo)}`;
   document.getElementById('out').textContent = JSON.stringify(await fetchJson(url), null, 2);
+}
+
+async function loadPermissions() {
+  document.getElementById('out').textContent = JSON.stringify(await fetchJson('/api/admin/permissions'), null, 2);
 }
 </script>
 </body>
