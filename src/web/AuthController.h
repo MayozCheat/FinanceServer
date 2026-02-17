@@ -73,6 +73,71 @@ public:
 
             ReplyJsonAuth(res, authService_.SetCompanyAccess(userId, isAdmin, targetUserId, companyId, allow));
         });
+
+
+        s.Post("/api/admin/permissions/company/add", [this](const httplib::Request& req, httplib::Response& res) {
+            std::string token;
+            if (!ExtractBearerToken(req, token)) {
+                ReplyJsonAuth(res, ApiResult::Fail(30005, "missing_or_invalid_token"));
+                return;
+            }
+
+            long long userId = 0;
+            bool isAdmin = false;
+            if (!authService_.ValidateToken(token, userId, isAdmin)) {
+                ReplyJsonAuth(res, ApiResult::Fail(30006, "invalid_token"));
+                return;
+            }
+
+            Json body;
+            try {
+                body = Json::parse(req.body);
+            } catch (...) {
+                ReplyJsonAuth(res, ApiResult::Fail(30000, "invalid_json"));
+                return;
+            }
+
+            ReplyJsonAuth(res, authService_.AddCompanyPermission(
+                userId,
+                isAdmin,
+                body.value("targetUserId", 0LL),
+                body.value("companyId", 0LL),
+                body.value("grantRead", false),
+                body.value("grantWrite", false)
+            ));
+        });
+
+        s.Post("/api/admin/permissions/company/remove", [this](const httplib::Request& req, httplib::Response& res) {
+            std::string token;
+            if (!ExtractBearerToken(req, token)) {
+                ReplyJsonAuth(res, ApiResult::Fail(30005, "missing_or_invalid_token"));
+                return;
+            }
+
+            long long userId = 0;
+            bool isAdmin = false;
+            if (!authService_.ValidateToken(token, userId, isAdmin)) {
+                ReplyJsonAuth(res, ApiResult::Fail(30006, "invalid_token"));
+                return;
+            }
+
+            Json body;
+            try {
+                body = Json::parse(req.body);
+            } catch (...) {
+                ReplyJsonAuth(res, ApiResult::Fail(30000, "invalid_json"));
+                return;
+            }
+
+            ReplyJsonAuth(res, authService_.RemoveCompanyPermission(
+                userId,
+                isAdmin,
+                body.value("targetUserId", 0LL),
+                body.value("companyId", 0LL),
+                body.value("removeRead", false),
+                body.value("removeWrite", false)
+            ));
+        });
     }
 
 private:

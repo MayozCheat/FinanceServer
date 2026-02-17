@@ -4,11 +4,17 @@
   <meta charset="utf-8"/>
   <title>财务系统测试页</title>
   <style>
-    body { font-family: "Microsoft YaHei", Arial; padding: 16px; }
+    body { font-family: "Microsoft YaHei", Arial; padding: 16px; background: #f5f6f8; }
     input { padding: 6px; margin-right: 10px; margin-bottom: 8px; }
-    button { padding: 6px 12px; margin-right: 8px; margin-bottom: 8px; }
+    button { padding: 6px 12px; margin-right: 8px; margin-bottom: 8px; cursor: pointer; }
     pre { background:#f6f6f6; padding:12px; border-radius:8px; overflow:auto; }
-    .box { border: 1px solid #ddd; border-radius: 8px; padding: 12px; margin-bottom: 12px; }
+    .box { border: 1px solid #ddd; border-radius: 8px; padding: 12px; margin-bottom: 12px; background:#fff; }
+    .user-card { border:1px solid #d9d9d9; border-radius:10px; margin-bottom:12px; background:#fff; }
+    .user-head { padding:10px 12px; display:flex; justify-content:space-between; align-items:center; }
+    .user-table { width:100%; border-collapse:collapse; }
+    .user-table th,.user-table td { border:1px solid #ececec; padding:8px; text-align:left; }
+    .hidden { display:none; }
+    .tip { color:#666; margin-top:6px; }
   </style>
 </head>
 <body>
@@ -16,11 +22,14 @@
 
   <div class="box">
     <h3>1) 登录 / 当前用户</h3>
-    用户名：<input id="username" value="finance_a">
-    密码：<input id="password" value="finance123" type="password">
+    用户名：<input id="username" value="admin">
+    密码：<input id="password" value="admin123" type="password">
+    <button onclick="fillAdminAndLogin()">一键管理员登录</button>
+    <button onclick="fillFinanceAndLogin()">一键财务登录</button>
     <button onclick="login()">登录</button>
     <button onclick="loadMe()">读取当前用户</button>
     <div>Token: <code id="tokenText">(未登录)</code></div>
+    <div id="roleText" class="tip">当前角色：未知。管理员接口需 admin 账号。</div>
   </div>
 
   <div class="box">
@@ -39,14 +48,32 @@
 
   <div class="box">
     <h3>3) 管理员接口</h3>
+    <div class="tip">提示：请先使用管理员账号登录，否则会返回 forbidden。</div>
     新用户ID：<input id="newUserId" value="10">
     新用户名：<input id="newUsername" value="finance_new">
     新密码：<input id="newPassword" value="finance123">
     <div>
       <button onclick="loadUsers()">读取用户清单（管理员）</button>
       <button onclick="createUser()">创建财务用户（管理员）</button>
-      <button onclick="loadPermissions()">读取权限清单（管理员）</button>
+      <button onclick="deleteUser()">删除用户（管理员）</button>
     </div>
+    删除用户ID：<input id="deleteUserId" value="10">
+    <hr>
+    用户ID：<input id="permUserId" value="2">
+    公司ID：<input id="permCompanyId" value="1">
+    <label><input id="grantRead" type="checkbox" checked>添加读取权限</label>
+    <label><input id="grantWrite" type="checkbox">添加修改权限</label>
+    <button onclick="addPermission()">添加公司权限</button>
+    <br>
+    <label><input id="removeRead" type="checkbox">删除读取权限</label>
+    <label><input id="removeWrite" type="checkbox" checked>删除修改权限</label>
+    <button onclick="removePermission()">删除公司权限</button>
+    <button onclick="loadPermissions()">读取权限清单（管理员）</button>
+  </div>
+
+  <div class="box">
+    <h3>4) 用户卡片视图</h3>
+    <div id="userCards"></div>
   </div>
 
   <h3>接口返回（JSON）</h3>
@@ -55,99 +82,159 @@
 <script>
 let token = "";
 
+function el(id) { return document.getElementById(id); }
+
 async function fetchJson(url, options = {}) {
   const headers = Object.assign({}, options.headers || {});
   if (token) headers["Authorization"] = `Bearer ${token}`;
-
   const r = await fetch(url, Object.assign({}, options, { headers }));
   return await r.json();
 }
 
 function getParams() {
   return {
-    companyId: document.getElementById('companyId').value.trim(),
-    dateFrom: document.getElementById('dateFrom').value.trim(),
-    dateTo: document.getElementById('dateTo').value.trim()
+    companyId: el('companyId').value.trim(),
+    dateFrom: el('dateFrom').value.trim(),
+    dateTo: el('dateTo').value.trim()
   };
 }
 
-function show(data) {
-  document.getElementById('out').textContent = JSON.stringify(data, null, 2);
+function show(data) { el('out').textContent = JSON.stringify(data, null, 2); }
+
+async function refreshRole() {
+  if (!token) {
+    el('roleText').textContent = '当前角色：未登录。管理员接口需 admin 账号。';
+    return;
+  }
+  const me = await fetchJson('/api/me');
+  if (me.ok && me.data) {
+    el('roleText').textContent = `当前角色：${me.data.username} (${me.data.isAdmin ? '管理员' : '普通用户'})`;
+  }
 }
 
 async function login() {
-  const username = document.getElementById('username').value.trim();
-  const password = document.getElementById('password').value.trim();
-
   const data = await fetchJson('/api/auth/login', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ username, password })
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username: el('username').value.trim(), password: el('password').value.trim() })
   });
-
   if (data.ok && data.data && data.data.token) {
     token = data.data.token;
-    document.getElementById('tokenText').textContent = token;
+    el('tokenText').textContent = token;
+    await refreshRole();
   }
-
   show(data);
 }
 
-async function loadMe() {
-  show(await fetchJson('/api/me'));
+async function fillAdminAndLogin() {
+  el('username').value = 'admin';
+  el('password').value = 'admin123';
+  await login();
 }
 
-async function loadCostBenefit() {
-  const p = getParams();
-  const url = `/api/reports/cost_benefit?company_id=${encodeURIComponent(p.companyId)}&date_from=${encodeURIComponent(p.dateFrom)}&date_to=${encodeURIComponent(p.dateTo)}`;
-  show(await fetchJson(url));
+async function fillFinanceAndLogin() {
+  el('username').value = 'finance_a';
+  el('password').value = 'finance123';
+  await login();
 }
 
-async function loadCostBenefitLedger() {
-  const p = getParams();
-  const url = `/api/finance/cost_benefit?company_id=${encodeURIComponent(p.companyId)}&date_from=${encodeURIComponent(p.dateFrom)}&date_to=${encodeURIComponent(p.dateTo)}`;
-  show(await fetchJson(url));
-}
-
-async function loadApSummary() {
-  const p = getParams();
-  const url = `/api/reports/ap_summary?company_id=${encodeURIComponent(p.companyId)}&date_from=${encodeURIComponent(p.dateFrom)}&date_to=${encodeURIComponent(p.dateTo)}`;
-  show(await fetchJson(url));
-}
-
-async function loadApAccrual() {
-  const p = getParams();
-  const url = `/api/finance/ap_accrual?company_id=${encodeURIComponent(p.companyId)}&date_from=${encodeURIComponent(p.dateFrom)}&date_to=${encodeURIComponent(p.dateTo)}`;
-  show(await fetchJson(url));
-}
-
-async function loadApPayment() {
-  const p = getParams();
-  const url = `/api/finance/ap_payment?company_id=${encodeURIComponent(p.companyId)}&date_from=${encodeURIComponent(p.dateFrom)}&date_to=${encodeURIComponent(p.dateTo)}`;
-  show(await fetchJson(url));
-}
-
-async function loadPermissions() {
-  show(await fetchJson('/api/admin/permissions'));
-}
+async function loadMe() { const data = await fetchJson('/api/me'); show(data); }
+async function loadCostBenefit() { const p = getParams(); show(await fetchJson(`/api/reports/cost_benefit?company_id=${encodeURIComponent(p.companyId)}&date_from=${encodeURIComponent(p.dateFrom)}&date_to=${encodeURIComponent(p.dateTo)}`)); }
+async function loadCostBenefitLedger() { const p = getParams(); show(await fetchJson(`/api/finance/cost_benefit?company_id=${encodeURIComponent(p.companyId)}&date_from=${encodeURIComponent(p.dateFrom)}&date_to=${encodeURIComponent(p.dateTo)}`)); }
+async function loadApSummary() { const p = getParams(); show(await fetchJson(`/api/reports/ap_summary?company_id=${encodeURIComponent(p.companyId)}&date_from=${encodeURIComponent(p.dateFrom)}&date_to=${encodeURIComponent(p.dateTo)}`)); }
+async function loadApAccrual() { const p = getParams(); show(await fetchJson(`/api/finance/ap_accrual?company_id=${encodeURIComponent(p.companyId)}&date_from=${encodeURIComponent(p.dateFrom)}&date_to=${encodeURIComponent(p.dateTo)}`)); }
+async function loadApPayment() { const p = getParams(); show(await fetchJson(`/api/finance/ap_payment?company_id=${encodeURIComponent(p.companyId)}&date_from=${encodeURIComponent(p.dateFrom)}&date_to=${encodeURIComponent(p.dateTo)}`)); }
+async function loadPermissions() { const data = await fetchJson('/api/admin/permissions'); show(data); if (data.ok) renderUsers(data.data.users || []); }
 
 async function loadUsers() {
-  show(await fetchJson('/api/admin/users'));
+  const data = await fetchJson('/api/admin/users');
+  show(data);
+  if (data.ok) renderUsers(data.data.users || []);
 }
 
 async function createUser() {
-  const body = {
-    userId: Number(document.getElementById('newUserId').value.trim()),
-    username: document.getElementById('newUsername').value.trim(),
-    password: document.getElementById('newPassword').value.trim(),
-    isAdmin: false
-  };
-
   show(await fetchJson('/api/admin/users', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body)
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ userId: Number(el('newUserId').value.trim()), username: el('newUsername').value.trim(), password: el('newPassword').value.trim(), isAdmin: false })
   }));
+}
+
+async function deleteUser() {
+  const data = await fetchJson('/api/admin/users/delete', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ targetUserId: Number(el('deleteUserId').value.trim()) })
+  });
+  show(data);
+  if (data.ok) await loadUsers();
+}
+
+async function addPermission() {
+  const data = await fetchJson('/api/admin/permissions/company/add', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      targetUserId: Number(el('permUserId').value.trim()), companyId: Number(el('permCompanyId').value.trim()),
+      grantRead: el('grantRead').checked, grantWrite: el('grantWrite').checked
+    })
+  });
+  show(data);
+  if (data.ok) await loadUsers();
+}
+
+async function removePermission() {
+  const data = await fetchJson('/api/admin/permissions/company/remove', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      targetUserId: Number(el('permUserId').value.trim()), companyId: Number(el('permCompanyId').value.trim()),
+      removeRead: el('removeRead').checked, removeWrite: el('removeWrite').checked
+    })
+  });
+  show(data);
+  if (data.ok) await loadUsers();
+}
+
+async function onPermissionToggle(userId, companyId, type, checked) {
+  const endpoint = checked ? '/api/admin/permissions/company/add' : '/api/admin/permissions/company/remove';
+  const body = { targetUserId: userId, companyId: companyId, grantRead: false, grantWrite: false, removeRead: false, removeWrite: false };
+  if (type === 'read') {
+    body.grantRead = checked;
+    body.removeRead = !checked;
+  } else {
+    body.grantWrite = checked;
+    body.removeWrite = !checked;
+  }
+  const data = await fetchJson(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  show(data);
+  if (data.ok) await loadUsers();
+}
+
+function renderUsers(users) {
+  const root = el('userCards');
+  root.innerHTML = '';
+  users.forEach((u, idx) => {
+    const card = document.createElement('div');
+    card.className = 'user-card';
+    const detailId = `detail_${idx}_${u.userId}`;
+    const companies = (u.companies || []).filter(c => c.canRead || c.canWrite);
+    card.innerHTML = `
+      <div class="user-head">
+        <div><b>${u.username}</b> (ID: ${u.userId}) ${u.isAdmin ? '[管理员]' : ''}</div>
+        <button onclick="document.getElementById('${detailId}').classList.toggle('hidden')">展开/收起</button>
+      </div>
+      <div id="${detailId}" class="hidden" style="padding: 0 12px 12px 12px;">
+        ${companies.length === 0 ? '<div>无公司权限</div>' : `
+          <table class="user-table">
+            <thead><tr><th>公司ID</th><th>读取权限</th><th>修改权限</th></tr></thead>
+            <tbody>
+              ${companies.map(c => `
+                <tr>
+                  <td>${c.companyId}</td>
+                  <td><input type="checkbox" ${c.canRead ? 'checked' : ''} onchange="onPermissionToggle(${u.userId}, ${c.companyId}, 'read', this.checked)"></td>
+                  <td><input type="checkbox" ${c.canWrite ? 'checked' : ''} onchange="onPermissionToggle(${u.userId}, ${c.companyId}, 'write', this.checked)"></td>
+                </tr>`).join('')}
+            </tbody>
+          </table>`}
+      </div>`;
+    root.appendChild(card);
+  });
 }
 </script>
 </body>
