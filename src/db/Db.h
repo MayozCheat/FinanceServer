@@ -28,6 +28,10 @@ public:
                std::vector<Row>& outRows,
                std::string& outErr);
 
+    bool Execute(const std::string& sqlText,
+                 int& outAffectedRows,
+                 std::string& outErr);
+
 private:
     std::unique_ptr<sql::Connection> conn_;
 };
